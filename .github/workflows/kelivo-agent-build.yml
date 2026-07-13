@@ -47,6 +47,6 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.ref_provider.default.branch }}-${{ run.number }}
+          tag_name: build-${{ github.ref_name }}-${{ github.run_number }}
           prerelease: true
           files: android/app/build/outputs/apk/debug/*.apk
