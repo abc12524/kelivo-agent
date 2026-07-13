@@ -34,7 +34,8 @@ jobs:
         run: |
           # building via flutter
           rm -rf ~/.gradle
-          flutter build apk --debug --no-pub
+          flutter pub get
+          flutter build apk --debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

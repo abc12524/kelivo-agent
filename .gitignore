@@ -63,5 +63,4 @@ internationalization.md
 /.agent/
 /.agents/
 /skills-lock.json
-android/app/src/main/assets/python-env.bin
 release-assets/
