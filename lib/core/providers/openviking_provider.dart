@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'services/openviking/openviking_service.dart';
+import '../services/openviking/openviking_service.dart';
 
 class OpenVikingProvider extends ChangeNotifier {
   static const _eKey = 'ov_enabled_v1';
@@ -75,6 +75,12 @@ class OpenVikingProvider extends ChangeNotifier {
     _threshold = v;
     notifyListeners();
     (await SharedPreferences.getInstance()).setDouble(_tKey, v);
+  }
+
+  Future<void> setUser(String v) async {
+    _user = v.trim();
+    notifyListeners();
+    (await SharedPreferences.getInstance()).setString(_wKey, _user);
   }
 
   Future<void> setDisplayCount(int v) async {

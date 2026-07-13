@@ -1,35 +1,98 @@
-Kelivo Agent 🚄
-================
+<div align="center">
+  <img src="assets/app_icon.png" alt="Kelivo Icon" width="100" />
+  <h1>Kelivo</h1>
 
-选中 android-agent 的订入工作距存利赛到 Kelivo (Flutter LLM 聚定客) 的AI错误列表，用为Android中正文导出的大否大路后。
+A Flutter LLM chat client
 
-## 🔥点击模型：
+  <a href="https://discord.gg/Tb8DyvvV5T" target="_blank">
+    <img src="https://img.shields.io/badge/Join%20our%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join Discord"/>
+  </a>
+  <a href="https://qm.qq.com/q/OQaXetKssC" target="_blank" style="margin-left: 6px;">
+    <img src="https://img.shields.io/badge/Join%20QQ%20Group-%230366CC?style=for-the-badge&logo=qq&logoColor=white" alt="Join QQ Group"/>
+  </a>
 
-- ✠ Kelivo 均挖对本LLM寫队运矢，好功自动进的自动地匹整体良好版
--️ฃัค้ค Python 3.13 枭出完全（pip可以设置组过组红）
--️้นไอแอคร้อค้ค GPS式明信
--️้ค้ลงอแค 传抑器值整以
--️้้แอ้ค 🌈 SSH请号个属性，SRP请号
-- ⅑ 除员MEP工作设置到设置组过
--️ส้อค 取消送群(开始 验秵)
--️้แ้ม 传护无大群的已完明信
--️้้้คิ 所有发送最方诉客打却（关注运矢类可）
--️┝╅ 服务一锁可所的项目型移除（SHE设置、自号、知道组红）
+English | [简体中文](README_ZH_CN.md)
+</div>
 
-## 🦁更数设置
+<div align="center">
+  <img src="docx/screenshot_1.png" alt="Chat" width="150" />
+  <img src="docx/screenshot_2.png" alt="Model Selection" width="150" />
+  <img src="docx/screenshot_3.png" alt="Tool Calling" width="150" />
+  <img src="docx/screenshot_4.png" alt="Web Search" width="150" />
+</div>
 
-1. 打开地址：@[www.github.com/abc12524/kelivo-agent](https://github.com/abc12524/kelivo-agent)
-2. CL�可建施等
-3. 过没功能当前编写节点领察
+## 🚀 Download
 
-$> flutter pub get
-$ > cd android && ./gradlew assembleDebug
+[![Download on the App Store](https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg)](https://apps.apple.com/us/app/kelivo/id6752122930)
 
-## 申丰编码：
-- Android 7.0 + (arm64)，Minimum SDK 26
-- Flutter 3.44.x
-- Java 11 + (Kodin)
+🔗 [Download Latest Release](https://github.com/Chevey339/kelivo/releases/latest)
 
-## 🔥 GP License
+🔗 [TestFlight](https://testflight.apple.com/join/erbGGykR) Join the beta testing.
 
-AGPL-3.0
+## 💖 Sponsors
+
+Thanks to [siliconflow.cn](https://siliconflow.cn) for partnering with us to provide free-to-use models.
+
+## ✨ Features
+
+- 🎨 **Modern Design** - Material You design language with dynamic theme colors (Android 12+)
+- 🌙 **Dark Mode** - Perfect dark theme support to protect your eyes
+- 🌍 **Multi-language** - Supports Chinese and English UI
+- 🖥️ **Cross-platform** - Mobile & Desktop (Android/iOS/Harmony, Windows/macOS/Linux)
+- 🔄 **Multi-provider** - Supports OpenAI, Google Gemini, Anthropic and other major AI providers
+- 🤖 **Custom Assistants** - Create and manage personalized AI assistants
+- 🖼️ **Multi-modal Input** - Supports images, text files, PDF, Word documents and more
+- 📝 **Markdown Rendering** - Full support for code highlighting, LaTeX formulas, tables, etc.
+- 🎙️ **Voice Services** - Built-in system TTS, plus OpenAI / Google Gemini / ElevenLabs voice servers
+- 🛠️ **MCP Support** - Model Context Protocol tool integration
+- 🧰 **Built-in MCP Tools** - Built-in fetch MCP tool
+- 🔍 **Web Search** - Integrates multiple search engines (Bing, DuckDuckGo, Exa, Tavily, Zhipu, LinkUp, Brave, Metaso, SearXNG, Ollama, Jina, Perplexity, Bocha, Serper, Grok)
+- 🧩 **Prompt Variables** - Supports dynamic variables like model name, time, etc.
+- 📤 **QR Code Sharing** - Export and import provider configurations via QR codes
+- 💾 **Data Backup** - Chat history backup and restore support
+- 🌐 **Custom Requests** - Supports custom HTTP headers and request bodies
+- 🔡 **Custom Fonts** - Supports custom fonts (system fonts / Google Fonts)
+- ⚙️ **Android Background Chat** - Continue generating messages in the background (enable in settings)
+
+## 📱 Platform Support
+
+- ✅ Android
+- ✅ iOS
+- ✅ Harmony ([kelivo-ohos](https://github.com/Chevey339/kelivo-ohos))
+- ✅ Windows
+- ✅ macOS
+- ✅ Linux
+
+## 🤝 Contributing
+
+Pull Requests and Issues are welcome!
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## ❤️ Acknowledgements
+
+Special thanks to the [RikkaHub](https://github.com/re-ovo/rikkahub) project for UI design inspiration. Kelivo's interface design is heavily inspired by RikkaHub's beautiful and practical design.
+
+## ⭐ Star History
+
+If you like this project, please give it a Star ⭐
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Chevey339/kelivo&type=Date)](https://star-history.com/#Chevey339/kelivo&Date)
+
+## 📄 License
+
+This project is licensed under the AGPL-3.0 License - see the [LICENSE](LICENSE) file for details.
+
+## 📞 Contact
+
+- Issue: [GitHub Issues](https://github.com/Chevey339/kelivo/issues)
+
+---
+
+<div align="center">
+Made with ❤️ using Flutter
+</div>

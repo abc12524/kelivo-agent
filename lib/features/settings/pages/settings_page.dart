@@ -238,6 +238,8 @@ class SettingsPage extends StatelessWidget {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => const OpenVikingPage(),
+                    ),
+                  );
                 },
               ),
               _iosDivider(context),

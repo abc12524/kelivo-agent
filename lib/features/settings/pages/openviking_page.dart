@@ -4,7 +4,6 @@ import '../../../icons/lucide_adapter.dart';
 import '../../../core/providers/openviking_provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_tactile.dart';
-import '../../../shared/widgets/ios_text_field.dart';
 import 'package:Kelivo/theme/app_font_weights.dart';
 
 class OpenVikingPage extends StatefulWidget {

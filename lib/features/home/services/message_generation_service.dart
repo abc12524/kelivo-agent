@@ -198,9 +198,8 @@ class MessageGenerationService {
               (m) => m['role'] == 'system' || m['role'] == 'SYSTEM',
             );
             final ovMsg = <String, dynamic>{
-              role: 'system',
-              content: 'OpenViking context:\n' + ovCtx,
-' + ovCtx,
+              'role': 'system',
+              'content': 'OpenViking context:\n' + ovCtx,
             };
             if (idx >= 0) {
               apiMessages.insert(idx + 1, ovMsg);

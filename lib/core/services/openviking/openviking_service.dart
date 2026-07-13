@@ -45,10 +45,9 @@ class OpenVikingService {
     if (displayCount <= 0 || baseUrl.isEmpty) return '';
     final result = await search(query, scoreThreshold: scoreThreshold, limit: displayCount);
     if (result.hits.isEmpty) return '';
-    return result.hits.map((h) => {
-      final scoreStr = h.score > 0 ? '('
-          + h.score.toStringAsFixed(2) + ')' : '';
-      return '> ðŸ– ['+x.uri+'] $scoreStr\n  '+rg.snippet;
+    return result.hits.map((h) {
+      final scoreStr = h.score > 0 ? '(${h.score.toStringAsFixed(2)})' : '';
+      return '> ðŸ“š [${h.uri}] $scoreStr\n  ${h.snippet}';
     }).join('\n');
   }
 }

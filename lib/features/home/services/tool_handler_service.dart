@@ -13,6 +13,7 @@ import '../../../core/services/api/chat_api_service.dart';
 import '../../../core/services/mcp/mcp_tool_service.dart';
 import '../../../core/services/search/search_tool_service.dart';
 import 'ask_user_interaction_service.dart';
+import '../../../core/services/device_tools_service.dart';
 import 'local_tools_service.dart';
 import 'tool_approval_service.dart';
 
