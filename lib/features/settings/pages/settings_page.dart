@@ -252,9 +252,6 @@ class SettingsPage extends StatelessWidget {
                     MaterialPageRoute(builder: (_) => const BaiduQianfanPage()),
                   );
                 },
-                    ),
-                  );
-                },
               ),
               _iosDivider(context),
               _iosNavRow(

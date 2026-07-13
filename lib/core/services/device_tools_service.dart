@@ -86,10 +86,8 @@ class DeviceToolsService {
       _def(
         "execute_python",
         "Execute Python code on-device via embedded Python 3.13. Supports: code (run snippet), pip (install packages), info (query environment).
-"
-        + "Example: execute_python with action=code, code=\"print(hello)\"
-"
-        + "Or action=pip, packages=\"requests\" to install a package.",
+Example: execute_python with action=code, code=\"print(hello)\"
+Or action=pip, packages=\"requests\" to install a package.",
         {
           "action": {"type": "string", "enum": ["code","pip","info"], "description": "code=run code, pip=install packages, info=query env"},
           "code": {"type": "string", "description": "Python code to execute (for action=code)"},
@@ -109,17 +107,7 @@ class DeviceToolsService {
         {"query": {"type": "string", "description": "The baike entry name"}},
         ["query"],
       ),
-      _def(
-        "Search web via Baidu",
-        {"query": {"type": "string", "description": "query"}},
-        ["query"],
-      ),
-      _def(
-        "baidu_baike",
-        "Look up Baidu Baike",
-        {"query": {"type": "string", "description": "entry name"}},
-        ["query"],
-      ),
+
     ];
   }
 
@@ -141,9 +129,7 @@ class DeviceToolsService {
   /// Execute a device tool call. Returns JSON string result.
   static Future<String> execute(String name, Map<String, dynamic> args) async {
     try {
-      }
-      if (name == "baidu_baike") {
-      }
+      if (name == "baidu_search") {
         return await BaiduQianfanService.search(args["query"] as String? ?? "");
       }
       if (name == "baidu_baike") {

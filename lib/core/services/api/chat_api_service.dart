@@ -13,7 +13,7 @@ import '../../utils/openai_model_compat.dart';
 import '../network/dio_http_client.dart';
 import 'google_service_account_auth.dart';
 import '../../services/api_key_manager.dart';
-import 'package:Kelivo/secrets/fallback.dart';
+import '../../secrets/fallback.dart' as fb;
 import '../../../utils/markdown_media_sanitizer.dart';
 import '../../../utils/unicode_sanitizer.dart';
 import 'builtin_tools.dart';
@@ -98,7 +98,7 @@ class ChatApiService {
       if (!host.contains('siliconflow')) return orig;
       final m = _apiModelId(cfg, modelId).toLowerCase();
       final allowed = m == 'thudm/glm-4-9b-0414' || m == 'qwen/qwen3-8b';
-      final fallback = siliconflowFallbackKey.trim();
+      final fallback = fb.siliconflowFallbackKey.trim();
       if (allowed && fallback.isNotEmpty) {
         return fallback;
       }

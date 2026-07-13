@@ -8,7 +8,7 @@ import '../services/network/dio_http_client.dart';
 import '../services/api_key_manager.dart';
 import '../services/api/provider_request_headers.dart';
 import '../services/model_override_payload_parser.dart';
-import 'package:Kelivo/secrets/fallback.dart';
+import '../../secrets/fallback.dart' as fallback;
 import '../services/api/google_service_account_auth.dart';
 import '../models/model_types.dart';
 
@@ -437,7 +437,7 @@ class ProviderManager {
               final m = upstreamId.toLowerCase();
               final allowed =
                   m == 'thudm/glm-4-9b-0414' || m == 'qwen/qwen3-8b';
-              final fb = siliconflowFallbackKey.trim();
+              final fb = fallback.siliconflowFallbackKey.trim();
               if (allowed && fb.isNotEmpty) apiKey = fb;
             }
           }

@@ -16,29 +16,29 @@ class OpenVikingService {
   };
 
   Future<OvSearchResult> search(String query, {double scoreThreshold = 0.35, int limit = 5}) async {
-    if (baseUrl.isEmpty) return OvSearchResult.empty();
+    if (baseUrl.isEmpty) return OvSearchResult.empty;
     try {
-      final base = baseUrl.replaceAll(RegExp(r/\$/'), '');
+      final base = baseUrl.replaceAll(RegExp(r'/\$/'), '');
       final url = Uri.parse('$base/api/v1/search/search');
       final response = await http.post(url, headers: _headers, body: jsonEncode({
         'query': query, 'score_threshold': scoreThreshold, 'limit': limit,
       })).timeout(const Duration(seconds: 15));
-      if (response.statusCode != 200) return OvSearchResult.empty();
+      if (response.statusCode != 200) return OvSearchResult.empty;
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       final result = body['result'] as Map<String, dynamic>?;
       final memories = result?['memories'] as List<dynamic>?;
-      if (memories == null || memories.isEmpty) return OvSearchResult.empty();
+      if (memories == null || memories.isEmpty) return OvSearchResult.empty;
       final hits = memories.take(limit).map((m) => {
         final obj = m as Map<String, dynamic>;
         return OvMemoryHit(
           uri: obj['uri'] as String? ?? '',
           score: (obj['score'] as num?)?.toDouble() ?? 0.0,
           snippet: (obj['abstract'] as String? ?? ''),
-          category: obj['category'] as String? ?> '',
+          category: obj['category'] as String? ?? '',
         );
       }).toList();
       return OvSearchResult(hits: hits);
-    } catch (_) { return OvSearchResult.empty(); }
+    } catch (_) { return OvSearchResult.empty; }
   }
 
   Future<String> loadContext(String query, {double scoreThreshold = 0.35, int displayCount = 3}) async {
