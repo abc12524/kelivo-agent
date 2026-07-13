@@ -32,15 +32,15 @@ jobs:
 
       - name: Build Debug APK
         run: |
-          cd android
+          # building via flutter
           rm -rf ~/.gradle
-          ./gradlew clean assembleDebug --no-daemon --stacktrace --no-build-cache
+          flutter build apk --debug --no-pub
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: kelivo-agent-debug
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
 
       - name: Create Release
@@ -49,4 +49,4 @@ jobs:
         with:
           tag_name: build-${{ github.ref_name }}-${{ github.run_number }}
           prerelease: true
-          files: android/app/build/outputs/apk/debug/*.apk
+          files: build/app/outputs/flutter-apk/*.apk
