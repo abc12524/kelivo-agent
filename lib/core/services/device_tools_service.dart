@@ -1,6 +1,5 @@
 import "dart:convert";
 import "baidu_qianfan/baidu_qianfan_service.dart";
-import "baidu_qianfan/baidu_qianfan_service.dart";
 import "package:flutter/services.dart";
 
 /// Service that provides device tools (GPS, sensor, shell, SSH, etc.)
@@ -85,9 +84,9 @@ class DeviceToolsService {
       ),
       _def(
         "execute_python",
-        "Execute Python code on-device via embedded Python 3.13. Supports: code (run snippet), pip (install packages), info (query environment).
-Example: execute_python with action=code, code=\"print(hello)\"
-Or action=pip, packages=\"requests\" to install a package.",
+        "Execute Python code on-device via embedded Python 3.13. Supports: code (run snippet), pip (install packages), info (query environment).\n"
+            "Example: execute_python with action=code, code=\"print(hello)\"\n"
+            "Or action=pip, packages=\"requests\" to install a package.",
         {
           "action": {"type": "string", "enum": ["code","pip","info"], "description": "code=run code, pip=install packages, info=query env"},
           "code": {"type": "string", "description": "Python code to execute (for action=code)"},

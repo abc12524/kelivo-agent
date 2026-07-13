@@ -28,7 +28,7 @@ class OpenVikingService {
       final result = body['result'] as Map<String, dynamic>?;
       final memories = result?['memories'] as List<dynamic>?;
       if (memories == null || memories.isEmpty) return OvSearchResult.empty;
-      final hits = memories.take(limit).map((m) => {
+      final hits = memories.take(limit).map((m) {
         final obj = m as Map<String, dynamic>;
         return OvMemoryHit(
           uri: obj['uri'] as String? ?? '',
