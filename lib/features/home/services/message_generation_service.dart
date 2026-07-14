@@ -195,16 +195,16 @@ class MessageGenerationService {
             displayCount: ovProvider.displayCount,
           );
           if (ovCtx.isNotEmpty) {
-            // Insert as user-role message (like Android-agent) before the user's actual message
+            // Insert as user-role message (like Android-agent) after the user's actual message
             final ovMsg = <String, dynamic>{
               'role': 'user',
               'content': '系统提示：\n$ovCtx',
             };
-            final userIdx = apiMessages.indexWhere(
+            final userIdx = apiMessages.lastIndexWhere(
               (m) => m['role'] == 'user' || m['role'] == 'USER',
             );
             if (userIdx >= 0) {
-              apiMessages.insert(userIdx, ovMsg);
+              apiMessages.insert(userIdx + 1, ovMsg);
             } else {
               apiMessages.insert(0, ovMsg);
             }
