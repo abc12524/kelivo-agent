@@ -64,6 +64,9 @@ class MainActivity : FlutterActivity() {
                             result.error("init_failed", "Python init failed: " + PythonManager.getInitError(), null)
                             return@setMethodCallHandler
                         }
+                        if (PythonManager.status == PythonManager.InitStatus.NOT_STARTED) {
+                            PythonManager.initAsync(this@MainActivity)
+                        }
                         val ready = PythonManager.waitForInit(60000)
                         if (!ready) {
                             result.error("init_failed", "Python init failed: " + PythonManager.getInitError(), null)
