@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.net.Uri
 import android.content.Intent
+import androidx.activity.result.contract.ActivityResultContracts
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -15,9 +16,6 @@ class MainActivity : FlutterActivity() {
     companion object {
         lateinit var mActivity: MainActivity
     }
-    private companion object {
-        const val CREATE_DOCUMENT_REQUEST_CODE = 4107
-    }
 
     private val processTextChannelName = "app.process_text"
     private val fileSaveChannelName = "app.file_save"
@@ -28,6 +26,10 @@ class MainActivity : FlutterActivity() {
     private var pendingSaveSourcePath: String? = null
     private var pythonChannel: MethodChannel? = null
     private var toolsPlugin: ToolsPlugin? = null
+
+    private val createDocumentLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri -> onSaveDocumentResult(uri) }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -130,16 +132,6 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != CREATE_DOCUMENT_REQUEST_CODE) {
-            return
-        }
-
-        val destUri = if (resultCode == Activity.RESULT_OK) data?.data else null
-        handleSaveDestination(destUri)
-    }
-
     private fun extractProcessText(intent: Intent?): String? {
         if (intent?.action != Intent.ACTION_PROCESS_TEXT) return null
         val text = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
@@ -172,12 +164,7 @@ class MainActivity : FlutterActivity() {
         pendingSaveSourcePath = sourceFile.absolutePath
 
         try {
-            val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE)
-                type = "application/zip"
-                putExtra(Intent.EXTRA_TITLE, suggestedFileName)
-            }
-            startActivityForResult(intent, CREATE_DOCUMENT_REQUEST_CODE)
+            createDocumentLauncher.launch(suggestedFileName)
         } catch (e: ActivityNotFoundException) {
             pendingSaveResult = null
             pendingSaveSourcePath = null
@@ -185,7 +172,7 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun handleSaveDestination(destUri: Uri?) {
+    private fun onSaveDocumentResult(destUri: Uri?) {
         val result = pendingSaveResult ?: return
         val sourcePath = pendingSaveSourcePath
 
