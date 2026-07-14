@@ -57,11 +57,11 @@ jobs:
           keyPassword=ci-store-pass
           PROPEOF
 
-      - name: Build Release APK (signed with CI keystore)
+      - name: Build Debug APK (signed with CI keystore)
         run: |
           rm -rf ~/.gradle
           flutter pub get
-          flutter build apk --release --build-name="1.1.${{ github.run_number }}" --build-number=${{ github.run_number }}
+          flutter build apk --debug --build-name="1.1.${{ github.run_number }}" --build-number=${{ github.run_number }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
