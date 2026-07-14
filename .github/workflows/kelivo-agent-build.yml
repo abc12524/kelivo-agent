@@ -48,7 +48,7 @@ jobs:
         run: |
           rm -rf ~/.gradle
           flutter pub get
-          flutter build apk --debug
+          flutter build apk --debug --build-name="1.1.${{ github.run_number }}" --build-number=${{ github.run_number }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

@@ -405,18 +405,18 @@ class ToolHandlerService {
           return localResult;
         }
 
+        // OpenViking tools (must be before DeviceTools to prevent MethodChannel fallthrough)
+        try {
+          final ovResult = await _handleOvToolCall(name, args);
+          if (ovResult != null) return ovResult;
+        } catch (_) {}
+
         // Device tools (GPS, sensor, shell, SSH, etc.)
         try {
           final deviceResult = await DeviceToolsService.execute(name, args);
           if (deviceResult.isNotEmpty) {
             return deviceResult;
           }
-        } catch (_) {}
-
-        // OpenViking tools
-        try {
-          final ovResult = await _handleOvToolCall(name, args);
-          if (ovResult != null) return ovResult;
         } catch (_) {}
 
         if (name == LocalToolNames.askUser &&
