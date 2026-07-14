@@ -1,10 +1,8 @@
 import 'dart:io';
 
-import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 
 class NativeFileSave {
-  static const MethodChannel _channel = MethodChannel('app.file_save');
-
   static Future<bool> saveFileFromPath({
     required String sourcePath,
     String? fileName,
@@ -15,12 +13,17 @@ class NativeFileSave {
       );
     }
 
-    final result = await _channel.invokeMethod<dynamic>('saveFileFromPath', {
-      'sourcePath': sourcePath,
-      if (fileName != null && fileName.trim().isNotEmpty)
-        'fileName': fileName.trim(),
-    });
-    if (result is bool) return result;
-    return result == true;
+    final file = File(sourcePath);
+    if (!file.existsSync()) {
+      throw FileSystemException('Source file not found', sourcePath);
+    }
+
+    final result = await FilePicker.platform.saveFile(
+      dialogTitle: 'Save file',
+      fileName: fileName ?? file.uri.pathSegments.last,
+      bytes: await file.readAsBytes(),
+    );
+
+    return result != null;
   }
 }
