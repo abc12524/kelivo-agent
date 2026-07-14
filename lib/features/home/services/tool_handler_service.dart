@@ -757,10 +757,13 @@ class ToolHandlerService {
       if (name == 'openviking_search') {
         final query = (args['query'] ?? '').toString().trim();
         if (query.isEmpty) return jsonEncode({'error': 'query is required'});
+        final ovProvider = contextProvider.read<OpenVikingProvider>();
+        final threshold = ovProvider.threshold;
+        final limit = ovProvider.displayCount;
         final resp = await http.post(
           Uri.parse('$base/api/v1/search/search'),
           headers: headers,
-          body: jsonEncode({'query': query, 'score_threshold': 0.3, 'limit': 5}),
+          body: jsonEncode({'query': query, 'score_threshold': threshold, 'limit': limit}),
         ).timeout(const Duration(seconds: 15));
         if (resp.statusCode != 200) return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
         final body = jsonDecode(resp.body);
