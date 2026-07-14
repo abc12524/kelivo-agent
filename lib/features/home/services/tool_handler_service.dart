@@ -622,21 +622,29 @@ class ToolHandlerService {
   Future<String?> _handleOvToolCall(String name, Map<String, dynamic> args) async {
     if (name != 'ov_search' && name != 'ov_add_memory') return null;
 
-    final ovProvider = contextProvider.read<OpenVikingProvider>();
-    if (!ovProvider.isConfigured) {
-      return jsonEncode({'error': 'OpenViking not configured'});
+    OpenVikingService? svc;
+    double threshold = 0.35;
+    int displayCount = 3;
+    try {
+      final ovProvider = contextProvider.read<OpenVikingProvider>();
+      if (!ovProvider.isConfigured) {
+        return jsonEncode({'error': 'OpenViking not configured'});
+      }
+      svc = ovProvider.service;
+      if (svc == null) return jsonEncode({'error': 'OpenViking service not available'});
+      threshold = ovProvider.threshold;
+      displayCount = ovProvider.displayCount;
+    } catch (e) {
+      return jsonEncode({'error': 'Failed to read OpenViking config: $e'});
     }
-
-    final svc = ovProvider.service;
-    if (svc == null) return jsonEncode({'error': 'OpenViking service not available'});
 
     try {
       if (name == 'ov_search') {
         final query = (args['query'] ?? '').toString().trim();
         if (query.isEmpty) return jsonEncode({'error': 'query is required'});
         final result = await svc.search(query,
-          scoreThreshold: ovProvider.threshold,
-          limit: ovProvider.displayCount,
+          scoreThreshold: threshold,
+          limit: displayCount,
         );
         if (result.hits.isEmpty) return jsonEncode({'result': [], 'message': 'No results found'});
         return jsonEncode({
@@ -690,9 +698,10 @@ class ToolHandlerService {
         return jsonEncode({'error': 'Failed to store: HTTP ${resp.statusCode} ${resp.body}'});
       }
     } catch (e) {
-      return jsonEncode({'error': 'OpenViking call failed: $e'});
+      return jsonEncode({'error': 'OpenViking call failed: $e'});  
     }
 
-    return null;
+    // Should not reach here for ov_search/ov_add_memory
+    return jsonEncode({'error': 'OpenViking tool internal error: unexpected flow'});
   }
 }
