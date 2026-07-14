@@ -11,7 +11,6 @@ class OpenVikingService {
     'Authorization': 'Bearer $apiKey',
     'Content-Type': 'application/json',
     'X-OpenViking-Account': 'default',
-    'X-OpenViking-User': user,
     'X-OpenViking-Peer': 'default',
   };
 

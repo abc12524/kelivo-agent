@@ -179,9 +179,9 @@ class MessageGenerationService {
       providerKey,
       modelId,
     );
-    // Inject OpenViking memory context
+    // Inject OpenViking memory context (aligned with Android-agent)
     final ovProvider = contextProvider.read<OpenVikingProvider>();
-    if (ovProvider.enabled && ovProvider.isConfigured) {
+    if (ovProvider.isConfigured && ovProvider.displayCount > 0) {
       try {
         final latestUserMsg = apiMessages.lastWhere(
           (m) => m['role'] == 'user' || m['role'] == 'USER',
@@ -195,15 +195,16 @@ class MessageGenerationService {
             displayCount: ovProvider.displayCount,
           );
           if (ovCtx.isNotEmpty) {
-            final idx = apiMessages.indexWhere(
-              (m) => m['role'] == 'system' || m['role'] == 'SYSTEM',
-            );
+            // Insert as user-role message (like Android-agent) before the user's actual message
             final ovMsg = <String, dynamic>{
-              'role': 'system',
-              'content': 'OpenViking context:\n' + ovCtx,
+              'role': 'user',
+              'content': '系统提示：\n$ovCtx',
             };
-            if (idx >= 0) {
-              apiMessages.insert(idx + 1, ovMsg);
+            final userIdx = apiMessages.indexWhere(
+              (m) => m['role'] == 'user' || m['role'] == 'USER',
+            );
+            if (userIdx >= 0) {
+              apiMessages.insert(userIdx, ovMsg);
             } else {
               apiMessages.insert(0, ovMsg);
             }
