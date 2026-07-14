@@ -1,6 +1,8 @@
 import "dart:convert";
 import "baidu_qianfan/baidu_qianfan_service.dart";
 import "package:flutter/services.dart";
+import "package:permission_handler/permission_handler.dart";
+import "notification_service.dart";
 
 /// Service that provides device tools (GPS, sensor, shell, SSH, etc.)
 /// Communicates with native Android code via MethodChannel
@@ -63,7 +65,7 @@ class DeviceToolsService {
       ),
       _def(
         "send_notification",
-        "Send an Android notification to the status bar. Use for reminders, alerts, and status updates.",
+        "Send an Android notification to the status bar. Use for reminders, alerts, and status updates. Will request notification permission if needed.",
         {
           "title": {"type": "string", "description": "Notification title"},
           "content": {"type": "string", "description": "Notification body text"},
@@ -72,13 +74,14 @@ class DeviceToolsService {
       ),
       _def(
         "play_sound",
-        "Play a sound. Two modes: tone (frequency-based beep) or url (play remote audio file). Use tone for simple alerts, url for TTS or music.",
+        "Play a sound. Two modes: tone (frequency-based beep) or audio_url (play remote audio file). Use tone for simple alerts, audio_url for TTS or music.",
         {
-          "mode": {"type": "string", "enum": ["tone","url"], "description": "tone=beep, url=play URL"},
-          "freq": {"type": "integer", "description": "Frequency in Hz for tone mode (200-3000)"},
-          "dur": {"type": "integer", "description": "Duration in ms for tone mode (50-5000)"},
-          "url": {"type": "string", "description": "Audio URL for url mode"},
-          "vol": {"type": "number", "description": "Volume 0.0-1.0"},
+          "mode": {"type": "string", "enum": ["tone","audio_url"], "description": "tone=beep, audio_url=play URL"},
+          "frequency": {"type": "integer", "description": "Frequency in Hz for tone mode (200-3000)"},
+          "duration_ms": {"type": "integer", "description": "Duration in ms for tone mode (50-5000)"},
+          "volume": {"type": "number", "description": "Volume 0.0-1.0"},
+          "url": {"type": "string", "description": "Audio URL for audio_url mode"},
+          "stream_type": {"type": "string", "enum": ["notification","alarm","music","ring"], "description": "Audio stream type (default notification)"},
         },
         ["mode"],
       ),
@@ -134,10 +137,26 @@ class DeviceToolsService {
       if (name == "baidu_baike") {
         return await BaiduQianfanService.baike(args["query"] as String? ?? "");
       }
+
+      // Request permissions before calling native tools
+      if (name == "send_notification") {
+        try {
+          await NotificationService.ensureAndroidNotificationsPermission();
+        } catch (_) {}
+      }
+      if (name == "get_gps_location") {
+        try {
+          final loc = Permission.location;
+          if (!await loc.isGranted) {
+            await loc.request();
+          }
+        } catch (_) {}
+      }
+
       if (name == "execute_python") {
         final raw = await _pythonChannel.invokeMethod("execute", args).timeout(
-          const Duration(seconds: 60),
-          onTimeout: () => jsonEncode({"error": "Python execution timed out after 60 seconds"}),
+          const Duration(seconds: 120),
+          onTimeout: () => jsonEncode({"error": "Python execution timed out after 120 seconds"}),
         );
         if (raw is String) return raw;
         return jsonEncode({"error": "unexpected response type"});

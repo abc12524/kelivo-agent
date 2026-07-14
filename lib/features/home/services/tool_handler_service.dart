@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../../../core/models/assistant.dart';
 import '../../../core/providers/assistant_provider.dart';
@@ -11,6 +12,8 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/tts_provider.dart';
 import '../../../core/services/api/chat_api_service.dart';
 import '../../../core/services/mcp/mcp_tool_service.dart';
+import '../../../core/services/openviking/openviking_service.dart';
+import '../../../core/providers/openviking_provider.dart';
 import '../../../core/services/search/search_tool_service.dart';
 import 'ask_user_interaction_service.dart';
 import '../../../core/services/device_tools_service.dart';
@@ -207,6 +210,14 @@ class ToolHandlerService {
     toolDefs.addAll(mcpTools);
     toolDefs.addAll(DeviceToolsService.getToolDefinitions());
 
+    // OpenViking tools (when configured)
+    if (supportsTools) {
+      final ovProvider = contextProvider.read<OpenVikingProvider>();
+      if (ovProvider.isConfigured) {
+        toolDefs.addAll(_buildOvToolDefinitions());
+      }
+    }
+
     return toolDefs;
   }
 
@@ -402,6 +413,12 @@ class ToolHandlerService {
           }
         } catch (_) {}
 
+        // OpenViking tools
+        try {
+          final ovResult = await _handleOvToolCall(name, args);
+          if (ovResult != null) return ovResult;
+        } catch (_) {}
+
         if (name == LocalToolNames.askUser &&
             assistant != null &&
             assistant.localToolIds.contains(LocalToolNames.askUser)) {
@@ -556,6 +573,124 @@ class ToolHandlerService {
         instruction:
             'The memory tool failed. Retry only after correcting the parameters, or inform the user about the issue.',
       );
+    }
+
+    return null;
+  }
+
+  /// Build OpenViking tool definitions.
+  static List<Map<String, dynamic>> _buildOvToolDefinitions() {
+    return [
+      {
+        'type': 'function',
+        'function': {
+          'name': 'ov_search',
+          'description': 'Search OpenViking memory by semantic query. Use when you need to recall past information, conversation details, user preferences, or any stored knowledge.',
+          'parameters': {
+            'type': 'object',
+            'properties': {
+              'query': {
+                'type': 'string',
+                'description': 'The search query describing what to find',
+              },
+            },
+            'required': ['query'],
+          },
+        },
+      },
+      {
+        'type': 'function',
+        'function': {
+          'name': 'ov_add_memory',
+          'description': 'Store a new fact, preference, event, or any important information into OpenViking for future recall. Use for anything worth remembering across conversations.',
+          'parameters': {
+            'type': 'object',
+            'properties': {
+              'content': {
+                'type': 'string',
+                'description': 'The content to store - a clear, self-contained description of the fact or event',
+              },
+            },
+            'required': ['content'],
+          },
+        },
+      },
+    ];
+  }
+
+  /// Handle OpenViking tool calls. Returns null if not an OV tool.
+  Future<String?> _handleOvToolCall(String name, Map<String, dynamic> args) async {
+    if (name != 'ov_search' && name != 'ov_add_memory') return null;
+
+    final ovProvider = contextProvider.read<OpenVikingProvider>();
+    if (!ovProvider.isConfigured) {
+      return jsonEncode({'error': 'OpenViking not configured'});
+    }
+
+    final svc = ovProvider.service;
+    if (svc == null) return jsonEncode({'error': 'OpenViking service not available'});
+
+    try {
+      if (name == 'ov_search') {
+        final query = (args['query'] ?? '').toString().trim();
+        if (query.isEmpty) return jsonEncode({'error': 'query is required'});
+        final result = await svc.search(query,
+          scoreThreshold: ovProvider.threshold,
+          limit: ovProvider.displayCount,
+        );
+        if (result.hits.isEmpty) return jsonEncode({'result': [], 'message': 'No results found'});
+        return jsonEncode({
+          'result': result.hits.map((h) => {
+            'uri': h.uri,
+            'score': h.score,
+            'snippet': h.snippet,
+            'category': h.category,
+          }).toList(),
+        });
+      }
+
+      if (name == 'ov_add_memory') {
+        final content = (args['content'] ?? '').toString().trim();
+        if (content.isEmpty) return jsonEncode({'error': 'content is required'});
+
+        final base = svc.baseUrl.replaceAll(RegExp(r'/\$'), '');
+        final headers = {
+          'Authorization': 'Bearer ${svc.apiKey}',
+          'Content-Type': 'application/json',
+          'X-OpenViking-Account': 'default',
+          'X-OpenViking-User': svc.user,
+        };
+
+        // Create a unique filename and ensure directory exists
+        final ts = DateTime.now().millisecondsSinceEpoch;
+        final dir = 'viking://user/${svc.user}/memories/events';
+        final fileUri = '$dir/app_memory_$ts.md';
+
+        // mkdir (idempotent)
+        await http.post(
+          Uri.parse('$base/api/v1/fs/mkdir'),
+          headers: headers,
+          body: jsonEncode({'uri': dir}),
+        );
+
+        // Write content (file must exist first — create via write with a temp approach)
+        final resp = await http.post(
+          Uri.parse('$base/api/v1/content/write'),
+          headers: headers,
+          body: jsonEncode({'uri': fileUri, 'content': content, 'mode': 'replace', 'wait': true}),
+        );
+
+        if (resp.statusCode == 200) {
+          final body = jsonDecode(resp.body);
+          if (body['status'] == 'ok') {
+            return jsonEncode({'success': true, 'uri': fileUri, 'message': 'Memory stored'});
+          }
+        }
+        // If write failed, try alternate approach: use write to a known path
+        return jsonEncode({'error': 'Failed to store: HTTP ${resp.statusCode} ${resp.body}'});
+      }
+    } catch (e) {
+      return jsonEncode({'error': 'OpenViking call failed: $e'});
     }
 
     return null;
