@@ -38,6 +38,12 @@ jobs:
           const String siliconflowFallbackKey = '${{ secrets.SILICONFLOW_KEY }}';
           EOF
 
+      - name: 🧹 Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/hostedtoolcache/heroku /opt/hostedtoolcache/go
+          docker system prune -af 2>/dev/null || true
+          df -h /
+
       - name: Build Debug APK
         run: |
           rm -rf ~/.gradle
