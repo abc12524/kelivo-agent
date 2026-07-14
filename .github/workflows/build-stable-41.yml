@@ -1,7 +1,7 @@
 name: Flutter Multi-Platform Build Stable 3.41
 
 env:
-  FLUTTER_VERSION: '3.41.2'  # 更新flutter版本为3.41.2
+  FLUTTER_VERSION: '3.44.1'  # 更新flutter版本为3.44.1
 
 on:
   # 手动触发

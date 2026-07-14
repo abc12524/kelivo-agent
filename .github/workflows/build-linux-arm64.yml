@@ -1,7 +1,7 @@
 name: Build Linux ARM64
 
 env:
-  FLUTTER_VERSION: '3.38.4'
+  FLUTTER_VERSION: '3.44.1'
 
 on:
   workflow_dispatch:
