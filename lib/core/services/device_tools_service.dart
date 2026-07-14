@@ -135,12 +135,18 @@ class DeviceToolsService {
         return await BaiduQianfanService.baike(args["query"] as String? ?? "");
       }
       if (name == "execute_python") {
-        final raw = await _pythonChannel.invokeMethod("execute", args);
+        final raw = await _pythonChannel.invokeMethod("execute", args).timeout(
+          const Duration(seconds: 60),
+          onTimeout: () => jsonEncode({"error": "Python execution timed out after 60 seconds"}),
+        );
         if (raw is String) return raw;
         return jsonEncode({"error": "unexpected response type"});
       }
       // All other tools go through app.tools channel
-      final result = await _toolsChannel.invokeMethod(name, args);
+      final result = await _toolsChannel.invokeMethod(name, args).timeout(
+        const Duration(seconds: 60),
+        onTimeout: () => jsonEncode({"error": "Tool '$name' timed out after 60 seconds"}),
+      );
       if (result is String) return result;
       return jsonEncode({"success": true, "result": result});
     } catch (e) {
