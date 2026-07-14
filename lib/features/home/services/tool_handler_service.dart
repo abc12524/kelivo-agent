@@ -751,7 +751,6 @@ class ToolHandlerService {
       'Authorization': 'Bearer ${svc.apiKey}',
       'Content-Type': 'application/json',
       'X-OpenViking-Account': 'default',
-      'X-OpenViking-User': user,
     };
 
     try {
