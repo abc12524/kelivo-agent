@@ -578,21 +578,18 @@ class ToolHandlerService {
     return null;
   }
 
-  /// Build OpenViking tool definitions.
+  /// Build OpenViking tool definitions. (Aligned with Android-agent reference)
   static List<Map<String, dynamic>> _buildOvToolDefinitions() {
     return [
       {
         'type': 'function',
         'function': {
-          'name': 'ov_search',
-          'description': 'Search OpenViking memory by semantic query. Use when you need to recall past information, conversation details, user preferences, or any stored knowledge.',
+          'name': 'openviking_search',
+          'description': '在 OpenViking 外置记忆中语义搜索，查找之前保存的知识、偏好、项目信息等',
           'parameters': {
             'type': 'object',
             'properties': {
-              'query': {
-                'type': 'string',
-                'description': 'The search query describing what to find',
-              },
+              'query': {'type': 'string', 'description': '搜索关键词，描述要查找什么内容'},
             },
             'required': ['query'],
           },
@@ -601,17 +598,128 @@ class ToolHandlerService {
       {
         'type': 'function',
         'function': {
-          'name': 'ov_add_memory',
-          'description': 'Store a new fact, preference, event, or any important information into OpenViking for future recall. Use for anything worth remembering across conversations.',
+          'name': 'openviking_remember',
+          'description': '将重要信息保存到 OpenViking 外置记忆中，以便后续对话回忆。适合保存：用户偏好、项目配置、关键决策、有用的操作经验',
           'parameters': {
             'type': 'object',
             'properties': {
-              'content': {
+              'category': {
                 'type': 'string',
-                'description': 'The content to store - a clear, self-contained description of the fact or event',
+                'enum': ['preferences', 'entities', 'events', 'experiences'],
+                'description': '记忆分类：preferences=用户偏好, entities=项目/概念/人物, events=决策/里程碑, experiences=操作经验',
+              },
+              'name': {'type': 'string', 'description': '记忆名称/主题'},
+              'content': {'type': 'string', 'description': '要保存的内容（Markdown 格式）'},
+            },
+            'required': ['category', 'name', 'content'],
+          },
+        },
+      },
+      {
+        'type': 'function',
+        'function': {
+          'name': 'openviking_read',
+          'description': '通过 URI 读取 OpenViking 记忆中的单个文件内容。URI 格式: viking://user/{user}/...',
+          'parameters': {
+            'type': 'object',
+            'properties': {
+              'uri': {'type': 'string', 'description': '文件的完整 URI'},
+            },
+            'required': ['uri'],
+          },
+        },
+      },
+      {
+        'type': 'function',
+        'function': {
+          'name': 'openviking_list_dir',
+          'description': '列出 OpenViking 指定目录下的所有文件和子目录，用于探索记忆结构或查找特定文件',
+          'parameters': {
+            'type': 'object',
+            'properties': {
+              'uri': {'type': 'string', 'description': '目录 URI'},
+              'recursive': {'type': 'boolean', 'description': '是否递归列出子目录（默认 false）'},
+            },
+            'required': ['uri'],
+          },
+        },
+      },
+      {
+        'type': 'function',
+        'function': {
+          'name': 'openviking_write_file',
+          'description': '写入内容到 OpenViking 记忆文件。支持三种模式：create=创建新文件, replace=覆盖已有文件, append=追加内容',
+          'parameters': {
+            'type': 'object',
+            'properties': {
+              'uri': {'type': 'string', 'description': '文件 URI'},
+              'content': {'type': 'string', 'description': '要写入的内容（Markdown 格式）'},
+              'mode': {
+                'type': 'string',
+                'enum': ['create', 'replace', 'append'],
+                'description': '写入模式',
               },
             },
-            'required': ['content'],
+            'required': ['uri', 'content', 'mode'],
+          },
+        },
+      },
+      {
+        'type': 'function',
+        'function': {
+          'name': 'openviking_delete_file',
+          'description': '通过 URI 删除 OpenViking 记忆中的文件。注意：此操作不可撤销！',
+          'parameters': {
+            'type': 'object',
+            'properties': {
+              'uri': {'type': 'string', 'description': '要删除的文件 URI'},
+            },
+            'required': ['uri'],
+          },
+        },
+      },
+      {
+        'type': 'function',
+        'function': {
+          'name': 'openviking_create_session',
+          'description': '在 OpenViking 中创建一个新的对话 Session，用于保存一段完整的对话历史',
+          'parameters': {
+            'type': 'object',
+            'properties': {
+              'session_id': {'type': 'string', 'description': '可选。自定义 session_id (UUID 格式)。不传则自动生成'},
+            },
+            'required': [],
+          },
+        },
+      },
+      {
+        'type': 'function',
+        'function': {
+          'name': 'openviking_add_message',
+          'description': '向 OpenViking Session 中添加一条消息（user 或 assistant）',
+          'parameters': {
+            'type': 'object',
+            'properties': {
+              'session_id': {'type': 'string', 'description': 'Session ID'},
+              'role': {'type': 'string', 'enum': ['user', 'assistant'], 'description': '消息角色'},
+              'content': {'type': 'string', 'description': '消息内容'},
+            },
+            'required': ['session_id', 'role', 'content'],
+          },
+        },
+      },
+      {
+        'type': 'function',
+        'function': {
+          'name': 'openviking_commit_session',
+          'description': '提交/归档 OpenViking Session，触发从会话内容中提取结构化长期记忆。commit 之后不要再次 add_message',
+          'parameters': {
+            'type': 'object',
+            'properties': {
+              'session_id': {'type': 'string', 'description': 'Session ID'},
+              'keep_recent_count': {'type': 'integer', 'description': '保留最近 N 条消息在活跃 session 中。0=归档所有消息（默认）'},
+            },
+            'required': ['session_id'],
           },
         },
       },
@@ -620,88 +728,206 @@ class ToolHandlerService {
 
   /// Handle OpenViking tool calls. Returns null if not an OV tool.
   Future<String?> _handleOvToolCall(String name, Map<String, dynamic> args) async {
-    if (name != 'ov_search' && name != 'ov_add_memory') return null;
+    const ovTools = [
+      'openviking_search', 'openviking_remember', 'openviking_read',
+      'openviking_list_dir', 'openviking_write_file', 'openviking_delete_file',
+      'openviking_create_session', 'openviking_add_message', 'openviking_commit_session',
+    ];
+    if (!ovTools.contains(name)) return null;
 
     OpenVikingService? svc;
-    double threshold = 0.35;
-    int displayCount = 3;
     try {
       final ovProvider = contextProvider.read<OpenVikingProvider>();
-      if (!ovProvider.isConfigured) {
-        return jsonEncode({'error': 'OpenViking not configured'});
-      }
+      if (!ovProvider.isConfigured) return jsonEncode({'error': 'OpenViking not configured'});
       svc = ovProvider.service;
       if (svc == null) return jsonEncode({'error': 'OpenViking service not available'});
-      threshold = ovProvider.threshold;
-      displayCount = ovProvider.displayCount;
     } catch (e) {
       return jsonEncode({'error': 'Failed to read OpenViking config: $e'});
     }
 
+    final base = svc.baseUrl.replaceAll(RegExp(r'/\$'), '');
+    final user = svc.user;
+    final headers = {
+      'Authorization': 'Bearer ${svc.apiKey}',
+      'Content-Type': 'application/json',
+      'X-OpenViking-Account': 'default',
+      'X-OpenViking-User': user,
+    };
+
     try {
-      if (name == 'ov_search') {
+      if (name == 'openviking_search') {
         final query = (args['query'] ?? '').toString().trim();
         if (query.isEmpty) return jsonEncode({'error': 'query is required'});
-        final result = await svc.search(query,
-          scoreThreshold: threshold,
-          limit: displayCount,
-        );
-        if (result.hits.isEmpty) return jsonEncode({'result': [], 'message': 'No results found'});
-        return jsonEncode({
-          'result': result.hits.map((h) => {
-            'uri': h.uri,
-            'score': h.score,
-            'snippet': h.snippet,
-            'category': h.category,
-          }).toList(),
-        });
+        final resp = await http.post(
+          Uri.parse('$base/api/v1/search/search'),
+          headers: headers,
+          body: jsonEncode({'query': query, 'score_threshold': 0.3, 'limit': 5}),
+        ).timeout(const Duration(seconds: 15));
+        if (resp.statusCode != 200) return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
+        final body = jsonDecode(resp.body);
+        final result = body['result'] as Map? ?? {};
+        final mems = result['memories'] as List? ?? [];
+        if (mems.isEmpty) return jsonEncode({'success': true, 'results': [], 'message': 'No results'});
+        final hits = mems.take(8).map((m) {
+          final obj = m as Map;
+          return {
+            'uri': obj['uri'] ?? '',
+            'score': (obj['score'] as num?)?.toDouble() ?? 0.0,
+            'snippet': (obj['abstract'] as String? ?? '').toString(),
+            'category': obj['category'] ?? '',
+          };
+        }).toList();
+        return jsonEncode({'success': true, 'results': hits});
       }
 
-      if (name == 'ov_add_memory') {
+      if (name == 'openviking_remember') {
+        final category = (args['category'] ?? 'entities').toString().trim();
+        final name = (args['name'] ?? 'untitled').toString().trim();
         final content = (args['content'] ?? '').toString().trim();
         if (content.isEmpty) return jsonEncode({'error': 'content is required'});
+        final uri = 'viking://user/$user/peers/default/memories/$category/$name.md';
 
-        final base = svc.baseUrl.replaceAll(RegExp(r'/\$'), '');
-        final headers = {
-          'Authorization': 'Bearer ${svc.apiKey}',
-          'Content-Type': 'application/json',
-          'X-OpenViking-Account': 'default',
-          'X-OpenViking-User': svc.user,
-        };
-
-        // Create a unique filename (use mode=create to allow new file creation)
-        final ts = DateTime.now().millisecondsSinceEpoch;
-        final dir = 'viking://user/${svc.user}/memories';
-        final fileUri = '$dir/app_memory_$ts.md';
-
-        // mkdir memories (idempotent)
-        await http.post(
-          Uri.parse('$base/api/v1/fs/mkdir'),
-          headers: headers,
-          body: jsonEncode({'uri': dir}),
-        );
-
-        // Write content with mode=create (works for new files under memories/)
+        // Try replace first; if 404/NOT_FOUND, retry with create (matches Android-agent)
         final resp = await http.post(
           Uri.parse('$base/api/v1/content/write'),
           headers: headers,
-          body: jsonEncode({'uri': fileUri, 'content': content, 'mode': 'create', 'wait': true}),
-        );
+          body: jsonEncode({'uri': uri, 'content': content, 'mode': 'replace', 'wait': true}),
+        ).timeout(const Duration(seconds: 15));
 
         if (resp.statusCode == 200) {
-          final body = jsonDecode(resp.body);
-          if (body['status'] == 'ok') {
-            return jsonEncode({'success': true, 'uri': fileUri, 'message': 'Memory stored'});
+          final b = jsonDecode(resp.body);
+          if (b['status'] == 'ok') return jsonEncode({'success': true, 'uri': uri});
+
+          final err = b['error'] ?? {};
+          final code = err['code']?.toString() ?? '';
+          if (code.contains('NOT_FOUND')) {
+            // File doesn't exist yet, create it
+            final retry = await http.post(
+              Uri.parse('$base/api/v1/content/write'),
+              headers: headers,
+              body: jsonEncode({'uri': uri, 'content': content, 'mode': 'create', 'wait': true}),
+            ).timeout(const Duration(seconds: 15));
+            if (retry.statusCode == 200) return jsonEncode({'success': true, 'uri': uri});
+            return jsonEncode({'error': 'Create failed: HTTP ${retry.statusCode}'});
           }
+          return jsonEncode({'error': '$err'});
         }
-        // If write failed, try alternate approach: use write to a known path
-        return jsonEncode({'error': 'Failed to store: HTTP ${resp.statusCode} ${resp.body}'});
+        // 404 fallback
+        if (resp.statusCode == 404) {
+          final retry = await http.post(
+            Uri.parse('$base/api/v1/content/write'),
+            headers: headers,
+            body: jsonEncode({'uri': uri, 'content': content, 'mode': 'create', 'wait': true}),
+          ).timeout(const Duration(seconds: 15));
+          if (retry.statusCode == 200) return jsonEncode({'success': true, 'uri': uri});
+          return jsonEncode({'error': 'Create failed: HTTP ${retry.statusCode}'});
+        }
+        return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
+      }
+
+      if (name == 'openviking_read') {
+        final uri = (args['uri'] ?? '').toString().trim();
+        if (uri.isEmpty) return jsonEncode({'error': 'uri is required'});
+        final resp = await http.get(
+          Uri.parse('$base/api/v1/content/read?uri=${Uri.encodeComponent(uri)}'),
+          headers: headers,
+        ).timeout(const Duration(seconds: 15));
+        if (resp.statusCode != 200) return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
+        final body = jsonDecode(resp.body);
+        final content = body['content'] ?? resp.body;
+        return jsonEncode({'success': true, 'uri': uri, 'content': content});
+      }
+
+      if (name == 'openviking_list_dir') {
+        final uri = (args['uri'] ?? '').toString().trim();
+        if (uri.isEmpty) return jsonEncode({'error': 'uri is required'});
+        final recursive = args['recursive'] == true;
+        final resp = await http.get(
+          Uri.parse('$base/api/v1/fs/tree?uri=${Uri.encodeComponent(uri)}${recursive ? '&recursive=true' : ''}'),
+          headers: headers,
+        ).timeout(const Duration(seconds: 15));
+        if (resp.statusCode != 200) return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
+        return jsonEncode({'success': true, 'tree': jsonDecode(resp.body)});
+      }
+
+      if (name == 'openviking_write_file') {
+        final uri = (args['uri'] ?? '').toString().trim();
+        final content = (args['content'] ?? '').toString().trim();
+        final mode = (args['mode'] ?? 'replace').toString().trim();
+        if (uri.isEmpty) return jsonEncode({'error': 'uri is required'});
+        if (content.isEmpty) return jsonEncode({'error': 'content is required'});
+        final resp = await http.post(
+          Uri.parse('$base/api/v1/content/write'),
+          headers: headers,
+          body: jsonEncode({'uri': uri, 'content': content, 'mode': mode, 'wait': mode != 'create'}),
+        ).timeout(const Duration(seconds: 15));
+        if (resp.statusCode == 200) return jsonEncode({'success': true, 'uri': uri, 'mode': mode});
+        return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
+      }
+
+      if (name == 'openviking_delete_file') {
+        final uri = (args['uri'] ?? '').toString().trim();
+        if (uri.isEmpty) return jsonEncode({'error': 'uri is required'});
+        final resp = await http.delete(
+          Uri.parse('$base/api/v1/fs?uri=${Uri.encodeComponent(uri)}'),
+          headers: headers,
+        ).timeout(const Duration(seconds: 15));
+        if (resp.statusCode == 200) return jsonEncode({'success': true, 'uri': uri});
+        return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
+      }
+
+      if (name == 'openviking_create_session') {
+        final sessionId = (args['session_id'] ?? '').toString().trim();
+        final payload = sessionId.isNotEmpty ? {'session_id': sessionId} : {};
+        final resp = await http.post(
+          Uri.parse('$base/api/v1/sessions'),
+          headers: headers,
+          body: jsonEncode(payload),
+        ).timeout(const Duration(seconds: 15));
+        if (resp.statusCode == 200) {
+          final body = jsonDecode(resp.body);
+          return jsonEncode({'success': true, 'result': body['result'] ?? body});
+        }
+        return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
+      }
+
+      if (name == 'openviking_add_message') {
+        final sessionId = (args['session_id'] ?? '').toString().trim();
+        final role = (args['role'] ?? '').toString().trim();
+        final content = (args['content'] ?? '').toString().trim();
+        if (sessionId.isEmpty) return jsonEncode({'error': 'session_id is required'});
+        if (role.isEmpty) return jsonEncode({'error': 'role is required'});
+        final resp = await http.post(
+          Uri.parse('$base/api/v1/sessions/$sessionId/messages'),
+          headers: headers,
+          body: jsonEncode({'role': role, 'content': content}),
+        ).timeout(const Duration(seconds: 15));
+        if (resp.statusCode == 200) {
+          final body = jsonDecode(resp.body);
+          return jsonEncode({'success': true, 'result': body['result'] ?? body});
+        }
+        return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
+      }
+
+      if (name == 'openviking_commit_session') {
+        final sessionId = (args['session_id'] ?? '').toString().trim();
+        final keepRecent = (args['keep_recent_count'] as num?)?.toInt() ?? 0;
+        if (sessionId.isEmpty) return jsonEncode({'error': 'session_id is required'});
+        final resp = await http.post(
+          Uri.parse('$base/api/v1/sessions/$sessionId/commit'),
+          headers: headers,
+          body: jsonEncode({'keep_recent_count': keepRecent}),
+        ).timeout(const Duration(seconds: 15));
+        if (resp.statusCode == 200) {
+          final body = jsonDecode(resp.body);
+          return jsonEncode({'success': true, 'result': body['result'] ?? body});
+        }
+        return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
       }
     } catch (e) {
-      return jsonEncode({'error': 'OpenViking call failed: $e'});  
+      return jsonEncode({'error': 'OpenViking call failed: $e'});
     }
 
-    // Should not reach here for ov_search/ov_add_memory
     return jsonEncode({'error': 'OpenViking tool internal error: unexpected flow'});
   }
 }
