@@ -30,9 +30,16 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: 📝 Inject fallback
+        shell: bash
+        run: |
+          mkdir -p lib/secrets
+          cat > lib/secrets/fallback.dart <<'EOF'
+          const String siliconflowFallbackKey = '${{ secrets.SILICONFLOW_KEY }}';
+          EOF
+
       - name: Build Debug APK
         run: |
-          # building via flutter
           rm -rf ~/.gradle
           flutter pub get
           flutter build apk --debug
