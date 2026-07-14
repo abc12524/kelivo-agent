@@ -669,23 +669,23 @@ class ToolHandlerService {
           'X-OpenViking-User': svc.user,
         };
 
-        // Create a unique filename and ensure directory exists
+        // Create a unique filename (use mode=create to allow new file creation)
         final ts = DateTime.now().millisecondsSinceEpoch;
-        final dir = 'viking://user/${svc.user}/memories/events';
+        final dir = 'viking://user/${svc.user}/memories';
         final fileUri = '$dir/app_memory_$ts.md';
 
-        // mkdir (idempotent)
+        // mkdir memories (idempotent)
         await http.post(
           Uri.parse('$base/api/v1/fs/mkdir'),
           headers: headers,
           body: jsonEncode({'uri': dir}),
         );
 
-        // Write content (file must exist first — create via write with a temp approach)
+        // Write content with mode=create (works for new files under memories/)
         final resp = await http.post(
           Uri.parse('$base/api/v1/content/write'),
           headers: headers,
-          body: jsonEncode({'uri': fileUri, 'content': content, 'mode': 'replace', 'wait': true}),
+          body: jsonEncode({'uri': fileUri, 'content': content, 'mode': 'create', 'wait': true}),
         );
 
         if (resp.statusCode == 200) {
