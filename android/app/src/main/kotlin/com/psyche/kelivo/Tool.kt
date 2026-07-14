@@ -8,5 +8,5 @@ interface Tool {
     val name: String
     val description: String
     val parameters: Map<String, Any>
-    fun execute(args: Map<String, Any>): String
+    suspend fun execute(args: Map<String, Any>): String
 }

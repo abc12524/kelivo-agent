@@ -29,7 +29,7 @@ class MainActivity : FlutterActivity() {
 
     private val createDocumentLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/zip")
-    ) { uri -> onSaveDocumentResult(uri) }
+    ) { uri: Uri? -> onSaveDocumentResult(uri) }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
