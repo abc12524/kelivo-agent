@@ -751,6 +751,7 @@ class ToolHandlerService {
       'Authorization': 'Bearer ${svc.apiKey}',
       'Content-Type': 'application/json',
       'X-OpenViking-Account': 'default',
+      'X-OpenViking-Peer': 'default',
     };
 
     try {
@@ -789,36 +790,38 @@ class ToolHandlerService {
         if (content.isEmpty) return jsonEncode({'error': 'content is required'});
         final uri = 'viking://user/$user/peers/default/memories/$category/$name.md';
 
-        // Try create first (new file), fallback to replace if already exists
+        // Try replace first; if NOT_FOUND/404, retry with create (aligned with Android-agent)
         final resp = await http.post(
           Uri.parse('$base/api/v1/content/write'),
           headers: headers,
-          body: jsonEncode({'uri': uri, 'content': content, 'mode': 'create', 'wait': true}),
+          body: jsonEncode({'uri': uri, 'content': content, 'mode': 'replace', 'wait': true}),
         ).timeout(const Duration(seconds: 15));
 
         if (resp.statusCode == 200) {
           final b = jsonDecode(resp.body);
-          if (b['status'] == 'ok' || (b['result']?['mode'] as String?) == 'create') {
-            return jsonEncode({'success': true, 'uri': uri});
+          final errCode = b['error'] is Map ? b['error']['code']?.toString() ?? '' : '';
+          if (b['status'] == 'ok') return jsonEncode({'success': true, 'uri': uri});
+          if (errCode.contains('NOT_FOUND')) {
+            // File doesn't exist, create it
+            final retry = await http.post(
+              Uri.parse('$base/api/v1/content/write'),
+              headers: headers,
+              body: jsonEncode({'uri': uri, 'content': content, 'mode': 'create', 'wait': false}),
+            ).timeout(const Duration(seconds: 15));
+            if (retry.statusCode == 200) return jsonEncode({'success': true, 'uri': uri});
+            return jsonEncode({'error': 'Create failed: HTTP ${retry.statusCode}'});
           }
-          // 200 but unexpected body, might need replace
-          final retry = await http.post(
-            Uri.parse('$base/api/v1/content/write'),
-            headers: headers,
-            body: jsonEncode({'uri': uri, 'content': content, 'mode': 'replace', 'wait': true}),
-          ).timeout(const Duration(seconds: 15));
-          if (retry.statusCode == 200) return jsonEncode({'success': true, 'uri': uri});
-          return jsonEncode({'error': 'Replace failed: HTTP ${retry.statusCode}'});
+          return jsonEncode({'error': '$errCode'});
         }
-        if (resp.statusCode == 403 || resp.statusCode == 409) {
-          // 403/409 = file may exist or permission policy, try replace
+        // 404 fallback (file doesn't exist)
+        if (resp.statusCode == 404) {
           final retry = await http.post(
             Uri.parse('$base/api/v1/content/write'),
             headers: headers,
-            body: jsonEncode({'uri': uri, 'content': content, 'mode': 'replace', 'wait': true}),
+            body: jsonEncode({'uri': uri, 'content': content, 'mode': 'create', 'wait': false}),
           ).timeout(const Duration(seconds: 15));
           if (retry.statusCode == 200) return jsonEncode({'success': true, 'uri': uri});
-          return jsonEncode({'error': 'Replace failed: HTTP ${retry.statusCode}'});
+          return jsonEncode({'error': 'Create failed: HTTP ${retry.statusCode}'});
         }
         return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
       }
