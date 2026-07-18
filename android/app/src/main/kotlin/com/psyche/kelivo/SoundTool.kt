@@ -41,8 +41,8 @@ class SoundTool : Tool {
         "properties" to mapOf(
             "mode" to mapOf(
                 "type" to "string",
-                "enum" to listOf("tone", "audio_url", "local"),
-                "description" to "声音模式：tone=播放音调提示音，audio_url=播放远程音频文件，local=播放本地音频文件"
+                "enum" to listOf("tone", "audio_url"),
+                "description" to "声音模式：tone=播放音调提示音，audio_url=播放音频文件（支持远程 http/https 或本地 file:/// 路径）"
             ),
             "frequency" to mapOf(
                 "type" to "integer",
@@ -58,11 +58,7 @@ class SoundTool : Tool {
             ),
             "url" to mapOf(
                 "type" to "string",
-                "description" to "音频文件 URL，仅 mode=audio_url 时生效。支持 http/https 远程链接或 file:/// 本地文件路径"
-            ),
-            "path" to mapOf(
-                "type" to "string",
-                "description" to "本地音频文件路径，仅 mode=local 时生效。如 /data/user/0/com.psyche.kelivo/recording.wav"
+                "description" to "音频文件 URL，仅 mode=audio_url 时生效。支持 http/https 远程链接或 file:/// 本地文件路径，如 file:///data/user/0/com.psyche.kelivo/recording.wav"
             ),
             "stream_type" to mapOf(
                 "type" to "string",
@@ -74,13 +70,12 @@ class SoundTool : Tool {
     )
 
     override suspend fun execute(args: Map<String, Any>): String {
-        val mode = args["mode"] as? String ?: return """{"error": "缺少 mode 参数（tone 或 audio_url 或 local）"}"""
+        val mode = args["mode"] as? String ?: return """{"error": "缺少 mode 参数（tone 或 audio_url）"}"""
 
         return when (mode) {
             "tone" -> playTone(args)
             "audio_url" -> playAudioUrl(args)
-            "local" -> playLocal(args)
-            else -> """{"error": "未知 mode: $mode，仅支持 tone 或 audio_url 或 local"}"""
+            else -> """{"error": "未知 mode: $mode，仅支持 tone 或 audio_url"}"""
         }
     }
 
