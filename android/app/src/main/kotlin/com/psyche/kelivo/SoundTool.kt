@@ -62,7 +62,7 @@ class SoundTool : Tool {
             ),
             "path" to mapOf(
                 "type" to "string",
-                "description" to "本地音频文件路径，仅 mode=local 时生效。如 /sdcard/Music/song.mp3"
+                "description" to "本地音频文件路径，仅 mode=local 时生效。如 /data/user/0/com.psyche.kelivo/recording.wav"
             ),
             "stream_type" to mapOf(
                 "type" to "string",
