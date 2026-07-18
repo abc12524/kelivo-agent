@@ -41,8 +41,8 @@ class SoundTool : Tool {
         "properties" to mapOf(
             "mode" to mapOf(
                 "type" to "string",
-                "enum" to listOf("tone", "audio_url"),
-                "description" to "声音模式：tone=播放音调提示音，audio_url=播放远程音频文件"
+                "enum" to listOf("tone", "audio_url", "local"),
+                "description" to "声音模式：tone=播放音调提示音，audio_url=播放远程音频文件，local=播放本地音频文件"
             ),
             "frequency" to mapOf(
                 "type" to "integer",
@@ -58,7 +58,11 @@ class SoundTool : Tool {
             ),
             "url" to mapOf(
                 "type" to "string",
-                "description" to "音频文件 URL，仅 mode=audio_url 时生效。支持 MP3、WAV、AAC 等常见格式"
+                "description" to "音频文件 URL，仅 mode=audio_url 时生效。支持 http/https 远程链接或 file:/// 本地文件路径"
+            ),
+            "path" to mapOf(
+                "type" to "string",
+                "description" to "本地音频文件路径，仅 mode=local 时生效。如 /sdcard/Music/song.mp3"
             ),
             "stream_type" to mapOf(
                 "type" to "string",
@@ -70,12 +74,13 @@ class SoundTool : Tool {
     )
 
     override suspend fun execute(args: Map<String, Any>): String {
-        val mode = args["mode"] as? String ?: return """{"error": "缺少 mode 参数（tone 或 audio_url）"}"""
+        val mode = args["mode"] as? String ?: return """{"error": "缺少 mode 参数（tone 或 audio_url 或 local）"}"""
 
         return when (mode) {
             "tone" -> playTone(args)
             "audio_url" -> playAudioUrl(args)
-            else -> """{"error": "未知 mode: $mode，仅支持 tone 或 audio_url"}"""
+            "local" -> playLocal(args)
+            else -> """{"error": "未知 mode: $mode，仅支持 tone 或 audio_url 或 local"}"""
         }
     }
 
@@ -207,6 +212,86 @@ class SoundTool : Tool {
         } catch (e: Exception) {
             releaseCurrent()
             """{"error": "播放音频失败: ${e.message}"}"""
+        }
+    }
+
+    private fun playLocal(args: Map<String, Any>): String {
+        val path = args["path"] as? String
+        if (path.isNullOrBlank()) return """{"error": "缺少 path 参数（本地音频文件路径）"}"""
+
+        val volume = (args["volume"] as? Number)?.toFloat()?.coerceIn(0f, 1f) ?: 0.5f
+        val streamTypeStr = args["stream_type"] as? String ?: "notification"
+
+        val streamType = when (streamTypeStr) {
+            "alarm" -> AudioManager.STREAM_ALARM
+            "music" -> AudioManager.STREAM_MUSIC
+            "ring" -> AudioManager.STREAM_RING
+            else -> AudioManager.STREAM_NOTIFICATION
+        }
+
+        return try {
+            val context = com.psyche.kelivo.MainActivity.mActivity
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+            releaseCurrent()
+
+            val afChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+                when (focusChange) {
+                    AudioManager.AUDIOFOCUS_LOSS,
+                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> releaseCurrent()
+                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                        currentPlayer?.setVolume(volume * 0.3f, volume * 0.3f)
+                    }
+                    AudioManager.AUDIOFOCUS_GAIN -> {
+                        currentPlayer?.setVolume(volume, volume)
+                    }
+                }
+            }
+
+            val focusResult = audioManager.requestAudioFocus(
+                afChangeListener, streamType, AudioManager.AUDIOFOCUS_GAIN
+            )
+
+            if (focusResult != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                return """{"error": "无法获取音频焦点，可能正在播放其他音频"}"""
+            }
+
+            val file = java.io.File(path)
+            if (!file.exists()) return """{"error": "文件不存在: $path"}"""
+
+            val mediaPlayer = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(when (streamTypeStr) {
+                            "alarm" -> AudioAttributes.USAGE_ALARM
+                            "ring" -> AudioAttributes.USAGE_NOTIFICATION_RINGTONE
+                            "music" -> AudioAttributes.USAGE_MEDIA
+                            else -> AudioAttributes.USAGE_NOTIFICATION
+                        })
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                setDataSource(file.absolutePath)
+                setVolume(volume, volume)
+                setOnCompletionListener {
+                    try { audioManager.abandonAudioFocus(afChangeListener) } catch (_: Exception) { }
+                    releaseCurrent()
+                }
+                setOnErrorListener { _, _, _ ->
+                    try { audioManager.abandonAudioFocus(afChangeListener) } catch (_: Exception) { }
+                    releaseCurrent()
+                    true
+                }
+                prepare()
+                start()
+            }
+
+            currentPlayer = mediaPlayer
+
+            """{"success": true, "mode": "local", "path": "$path", "volume": $volume, "stream_type": "$streamTypeStr"}"""
+        } catch (e: Exception) {
+            releaseCurrent()
+            """{"error": "播放本地音频失败: ${e.message}"}"""
         }
     }
 }

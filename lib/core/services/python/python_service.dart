@@ -28,6 +28,19 @@ class PythonService {
     }
   }
 
+  /// 执行本地 Python 脚本文件
+  static Future<PythonResult> executeScript(String path, {int timeoutSec = 60}) async {
+    try {
+      final raw = await _channel.invokeMethod('execute', {
+        'action': 'script',
+        'path': path,
+      });
+      return PythonResult.fromJson(raw as String);
+    } catch (e) {
+      return PythonResult(success: false, output: '调用失败: ，e', exitCode: -1);
+    }
+  }
+
   /// pip install 安装包
   static Future<PythonResult> pipInstall(String packages, {int timeoutSec = 180}) async {
     try {

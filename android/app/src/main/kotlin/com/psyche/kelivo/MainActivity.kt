@@ -83,6 +83,19 @@ class MainActivity : FlutterActivity() {
                                 json.put("exit_code", pyResult.exitCode)
                                 result.success(json.toString())
                             }
+                            "script" -> {
+                                val path = args?.get("path") as? String ?: ""
+                                if (path.isBlank()) {
+                                    result.error("invalid_args", "Missing path for script action", null)
+                                    return@setMethodCallHandler
+                                }
+                                val pyResult = PythonManager.executeScript(path)
+                                val json = JSONObject()
+                                json.put("success", pyResult.success)
+                                json.put("output", pyResult.output)
+                                json.put("exit_code", pyResult.exitCode)
+                                result.success(json.toString())
+                            }
                             "pip" -> {
                                 val pyResult = PythonManager.pipInstall(packages)
                                 val json = JSONObject()
