@@ -24,8 +24,8 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: flutter.versionCode
+        versionName = "1.1.${System.getenv("GITHUB_RUN_NUMBER") ?: flutter.versionName}"
     }
 
     val keystorePropertiesFile = rootProject.file("key.properties")

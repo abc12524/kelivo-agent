@@ -64,3 +64,7 @@ internationalization.md
 /.agents/
 /skills-lock.json
 release-assets/
+
+# CI signing (generated at build time)
+ci-keystore.jks
+key.properties

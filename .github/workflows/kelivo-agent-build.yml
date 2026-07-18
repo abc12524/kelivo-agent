@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write   # 需要写权限才能创建 Release
 
 jobs:
   build:
@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -44,24 +46,11 @@ jobs:
           docker system prune -af 2>/dev/null || true
           df -h /
 
-      - name: 🔑 Generate CI signing keystore
-        run: |
-          keytool -genkey -v -keystore android/app/ci-keystore.jks \
-            -alias ci-key -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass ci-store-pass -keypass ci-store-pass \
-            -dname "CN=CI, OU=Kelivo, O=Kelivo, L=Unknown, ST=Unknown, C=CN"
-          cat > android/key.properties <<'PROPEOF'
-          storeFile=ci-keystore.jks
-          storePassword=ci-store-pass
-          keyAlias=ci-key
-          keyPassword=ci-store-pass
-          PROPEOF
-
-      - name: Build Debug APK (signed with CI keystore)
+      - name: Build Debug APK
         run: |
           rm -rf ~/.gradle
           flutter pub get
-          flutter build apk --debug --build-name="1.1.${{ github.run_number }}" --build-number=${{ github.run_number }}
+          flutter build apk --debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
