@@ -27,7 +27,7 @@ class SSHTool : Tool {
                 "description" to "SSH 服务器地址（必填）"
             ),
             "port" to mapOf(
-                "type" to "integer",
+                "type" to "string",
                 "description" to "SSH 端口（必填）"
             ),
             "username" to mapOf(
