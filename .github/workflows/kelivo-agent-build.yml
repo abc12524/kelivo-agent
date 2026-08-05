@@ -58,12 +58,15 @@ jobs:
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
           echo "✅ 签名配置已写入"
 
-      - name: 📝 获取版本号
+      - name: 📝 自动递增版本号
         id: version
         run: |
-          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //' | tr -d ' ')
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "版本号: $VERSION"
+          BASE=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' ' | cut -d'+' -f1)
+          RUN_NUM=${{ github.run_number }}
+          sed -i "s/^version: .*/version: ${BASE}+${RUN_NUM}/" pubspec.yaml
+          echo "VERSION=${BASE}+${RUN_NUM}" >> $GITHUB_ENV
+          echo "TAG=v${BASE}-build.${RUN_NUM}" >> $GITHUB_ENV
+          echo "版本号: ${BASE}+${RUN_NUM}（CI 运行号 ${RUN_NUM}）"
 
       - name: 🏗️ 构建 Release APK (arm64-v8a)
         run: |
@@ -94,8 +97,8 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ env.VERSION }}-build.${{ github.run_number }}
-          name: Kelivo v${{ env.VERSION }} (build ${{ github.run_number }})
+          tag_name: ${{ env.TAG }}
+          name: Kelivo v${{ env.VERSION }}
           body: |
             Kelivo Agent Release APK（arm64-v8a）
             - 版本: v${{ env.VERSION }}
