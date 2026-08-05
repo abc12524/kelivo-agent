@@ -79,6 +79,7 @@ class OpenVikingProvider extends ChangeNotifier {
 
   Future<void> setUser(String v) async {
     _user = v.trim();
+    _rebuildService();
     notifyListeners();
     (await SharedPreferences.getInstance()).setString(_wKey, _user);
   }
