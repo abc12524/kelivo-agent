@@ -61,12 +61,12 @@ jobs:
       - name: 📝 自动递增版本号
         id: version
         run: |
-          BASE=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' ' | cut -d'+' -f1)
           RUN_NUM=${{ github.run_number }}
-          sed -i "s/^version: .*/version: ${BASE}+${RUN_NUM}/" pubspec.yaml
-          echo "VERSION=${BASE}+${RUN_NUM}" >> $GITHUB_ENV
-          echo "TAG=v${BASE}-build.${RUN_NUM}" >> $GITHUB_ENV
-          echo "版本号: ${BASE}+${RUN_NUM}（CI 运行号 ${RUN_NUM}）"
+          VERSION="1.1.${RUN_NUM}"
+          sed -i "s/^version: .*/version: ${VERSION}/" pubspec.yaml
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "TAG=v${VERSION}" >> $GITHUB_ENV
+          echo "版本号: ${VERSION}（CI 运行号 ${RUN_NUM}）"
 
       - name: 🏗️ 构建 Release APK (arm64-v8a)
         run: |
