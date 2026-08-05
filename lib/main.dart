@@ -17,7 +17,6 @@ import 'package:provider/provider.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'core/providers/chat_provider.dart';
 import 'core/providers/user_provider.dart';
-import 'core/services/baidu_qianfan/baidu_qianfan_service.dart';
 import 'core/providers/openviking_provider.dart';
 import 'core/providers/settings_provider.dart';
 import 'core/providers/mcp_provider.dart';
@@ -147,7 +146,6 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => WorldBookProvider()),
         ChangeNotifierProvider(create: (_) => MemoryProvider()),
         ChangeNotifierProvider(create: (_) => OpenVikingProvider()),
-        ChangeNotifierProvider(create: (_) => BaiduQianfanProvider()),
         ChangeNotifierProvider(create: (_) => BackupReminderProvider()),
         // Desktop hotkeys provider
         ChangeNotifierProvider(create: (_) => HotkeyProvider()),

@@ -24,8 +24,11 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: flutter.versionCode
-        versionName = "1.1.${System.getenv("GITHUB_RUN_NUMBER") ?: flutter.versionName}"
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
+        versionCode = flutter.versionCode + (System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 0)
+        versionName = flutter.versionName
     }
 
     val keystorePropertiesFile = rootProject.file("key.properties")

@@ -22,7 +22,7 @@ class ShellTool : Tool {
         "properties" to mapOf(
             "command" to mapOf(
                 "type" to "string",
-                "description" to "要执行的 Shell 命令，例如: 'ls -la /sdcard' 或 'pm list packages'"
+                "description" to "要执行的 Shell 命令，例如: 'ls -la /PATH/TO/FILE' 或 'pm list packages'"
             )
         ),
         "required" to listOf("command")

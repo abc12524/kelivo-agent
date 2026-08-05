@@ -1,5 +1,4 @@
 import "dart:convert";
-import "baidu_qianfan/baidu_qianfan_service.dart";
 import "package:flutter/services.dart";
 import "package:permission_handler/permission_handler.dart";
 import "notification_service.dart";
@@ -21,7 +20,7 @@ class DeviceToolsService {
       _def(
         "execute_system_command",
         "Execute a shell command on the Android device via sh -c. Use for file operations, process management, system queries.",
-        {"command": {"type": "string", "description": "Shell command to execute, e.g. \"ls -la /sdcard\""}},
+        {"command": {"type": "string", "description": "Shell command to execute, e.g. \"ls -la /PATH/TO/FILE\""}},
         ["command"],
       ),
       _def(
@@ -111,18 +110,6 @@ class DeviceToolsService {
         },
         ["duration_ms"],
       ),
-      _def(
-        "baidu_search",
-        "Search the web using Baidu search engine. Returns title, url, snippet for each result.",
-        {"query": {"type": "string", "description": "The search query"}},
-        ["query"],
-      ),
-      _def(
-        "baidu_baike",
-        "Look up a Baidu Baike entry. Returns title, summary, and url.",
-        {"query": {"type": "string", "description": "The baike entry name"}},
-        ["query"],
-      ),
 
     ];
   }
@@ -145,13 +132,6 @@ class DeviceToolsService {
   /// Execute a device tool call. Returns JSON string result.
   static Future<String> execute(String name, Map<String, dynamic> args) async {
     try {
-      if (name == "baidu_search") {
-        return await BaiduQianfanService.search(args["query"] as String? ?? "");
-      }
-      if (name == "baidu_baike") {
-        return await BaiduQianfanService.baike(args["query"] as String? ?? "");
-      }
-
       // Request permissions before calling native tools
       if (name == "send_notification") {
         try {

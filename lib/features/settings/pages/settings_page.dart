@@ -18,8 +18,6 @@ import '../../quick_phrase/pages/quick_phrases_page.dart';
 import '../../instruction_injection/pages/instruction_injection_page.dart';
 import '../../world_book/pages/world_book_page.dart';
 import 'network_proxy_page.dart';
-import 'baidu_qianfan_page.dart';
-import '../../../core/services/baidu_qianfan/baidu_qianfan_service.dart';
 import 'openviking_page.dart';
 import 'storage_space_page.dart';
 import '../../stats/pages/stats_page.dart';
@@ -239,17 +237,6 @@ class SettingsPage extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (_) => const OpenVikingPage(),
                     ),
-                  );
-                },
-              ),
-              _iosDivider(context),
-              _iosNavRow(
-                context,
-                icon: Lucide.Search,
-                label: '百度千帆',
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const BaiduQianfanPage()),
                   );
                 },
               ),
