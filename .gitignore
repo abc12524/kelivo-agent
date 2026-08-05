@@ -53,6 +53,7 @@ pubspec.lock
 /linux/flutter/generated_plugins.cmake
 /windows/flutter/generated_plugins.cmake
 /macos/flutter/GeneratedPluginRegistrant.swift
+/macos/Flutter/GeneratedPluginRegistrant.swift
 
 internationalization.md
 /macos/Podfile.lock
