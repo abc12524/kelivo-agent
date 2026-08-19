@@ -503,6 +503,17 @@ class ChatActions {
     if (chatController.appendPersistedTailMessage(userMessage)) {
       viewModel.restoreMessageUiState();
     }
+
+    // Persist OpenViking context injection right after the user message so
+    // history replays match what was sent (stable prefix cache).
+    final ovInjected = await messageGenerationService.persistOpenVikingContext(
+      conversationId: conversation.id,
+      query: content,
+    );
+    if (ovInjected != null &&
+        chatController.appendPersistedTailMessage(ovInjected)) {
+      viewModel.restoreMessageUiState();
+    }
     onMessagesChanged?.call();
 
     _setConversationLoading(conversation.id, true);

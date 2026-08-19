@@ -179,41 +179,6 @@ class MessageGenerationService {
       providerKey,
       modelId,
     );
-    // Inject OpenViking memory context (aligned with Android-agent)
-    final ovProvider = contextProvider.read<OpenVikingProvider>();
-    if (ovProvider.isConfigured && ovProvider.displayCount > 0) {
-      try {
-        final latestUserMsg = apiMessages.lastWhere(
-          (m) => m['role'] == 'user' || m['role'] == 'USER',
-          orElse: () => <String, dynamic>{'content': ''},
-        );
-        final userText = (latestUserMsg['content'] as String?) ?? '';
-        if (userText.isNotEmpty) {
-          final ovCtx = await ovProvider.service!.loadContext(
-            userText,
-            scoreThreshold: ovProvider.threshold,
-            displayCount: ovProvider.displayCount,
-          );
-          if (ovCtx.isNotEmpty) {
-            // Insert as user-role message (like Android-agent) after the user's actual message
-            final ovMsg = <String, dynamic>{
-              'role': 'user',
-              'content': '系统提示：\n$ovCtx',
-            };
-            final userIdx = apiMessages.lastIndexWhere(
-              (m) => m['role'] == 'user' || m['role'] == 'USER',
-            );
-            if (userIdx >= 0) {
-              apiMessages.insert(userIdx + 1, ovMsg);
-            } else {
-              apiMessages.insert(0, ovMsg);
-            }
-          }
-        }
-      } catch (_) {
-        // OpenViking context injection failed silently
-      }
-    }
 
     messageBuilderService.injectSearchPrompt(
       apiMessages,
@@ -274,6 +239,40 @@ class MessageGenerationService {
         assistant: assistant,
       ),
     );
+  }
+
+  /// Search OpenViking for the given query and persist the injected context as
+  /// a user-role message right after the user's message.
+  ///
+  /// Persisting the injection makes later history replays byte-identical to
+  /// what was originally sent to the model, keeping the DeepSeek prefix cache
+  /// stable across turns. Returns the persisted message, or null when OV is not
+  /// configured or yields no relevant memory.
+  Future<ChatMessage?> persistOpenVikingContext({
+    required String conversationId,
+    required String query,
+  }) async {
+    try {
+      final ovProvider = contextProvider.read<OpenVikingProvider>();
+      if (!ovProvider.isConfigured || ovProvider.displayCount <= 0) return null;
+      final userText = query.trim();
+      if (userText.isEmpty) return null;
+      final ovCtx = await ovProvider.service!.loadContext(
+        userText,
+        scoreThreshold: ovProvider.threshold,
+        displayCount: ovProvider.displayCount,
+      );
+      if (ovCtx.isEmpty) return null;
+      final content =
+          MessageBuilderService.buildOpenVikingInjectionContent(ovCtx);
+      return chatService.addMessage(
+        conversationId: conversationId,
+        role: 'user',
+        content: content,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Build the persisted content string for a user message.

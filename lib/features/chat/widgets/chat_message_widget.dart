@@ -41,6 +41,7 @@ import '../../../desktop/menu_anchor.dart';
 import '../../../shared/widgets/emoji_text.dart';
 import '../../home/services/ask_user_interaction_service.dart';
 import '../../home/services/local_tools_service.dart';
+import '../../home/services/message_builder_service.dart';
 import '../../home/services/tool_approval_service.dart';
 import '../utils/thinking_tag_parser.dart';
 import 'citation_sources_sheet.dart';
@@ -1275,6 +1276,30 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
       child: _ToolCallItem(
         part: part,
         onRecoveredAnswer: widget.onRecoveredAskUserAnswer,
+      ),
+    );
+  }
+
+  Widget _buildOpenVikingInjectionMessage() {
+    final part = ToolUIPart(
+      id: widget.message.id,
+      toolName: 'system_search',
+      arguments: const <String, dynamic>{},
+      content: widget.message.content,
+      loading: false,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Flexible(
+            child: _ToolCallItem(
+              part: part,
+              onRecoveredAnswer: widget.onRecoveredAskUserAnswer,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2913,7 +2938,14 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.message.role == 'user') return _buildUserMessage();
+    if (widget.message.role == 'user') {
+      if (MessageBuilderService.isOpenVikingInjectionContent(
+        widget.message.content,
+      )) {
+        return _buildOpenVikingInjectionMessage();
+      }
+      return _buildUserMessage();
+    }
     if (widget.message.role == 'tool') return _buildToolMessage();
     return _buildAssistantMessage();
   }
