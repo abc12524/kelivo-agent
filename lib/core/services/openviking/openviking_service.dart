@@ -5,7 +5,13 @@ class OpenVikingService {
   final String baseUrl;
   final String apiKey;
   final String user;
-  OpenVikingService({required this.baseUrl, required this.apiKey, required this.user});
+  final http.Client _client;
+  OpenVikingService({
+    required this.baseUrl,
+    required this.apiKey,
+    required this.user,
+    http.Client? client,
+  }) : _client = client ?? http.Client();
 
   Map<String, String> get _headers => {
     'Authorization': 'Bearer $apiKey',
@@ -19,24 +25,38 @@ class OpenVikingService {
     try {
       final base = baseUrl.replaceAll(RegExp(r'/\$/'), '');
       final url = Uri.parse('$base/api/v1/search/search');
-      final response = await http.post(url, headers: _headers, body: jsonEncode({
+      final response = await _client.post(url, headers: _headers, body: jsonEncode({
         'query': query, 'score_threshold': scoreThreshold, 'limit': limit,
       })).timeout(const Duration(seconds: 15));
       if (response.statusCode != 200) return OvSearchResult.empty;
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       final result = body['result'] as Map<String, dynamic>?;
-      final memories = result?['memories'] as List<dynamic>?;
-      if (memories == null || memories.isEmpty) return OvSearchResult.empty;
-      final hits = memories.take(limit).map((m) {
-        final obj = m as Map<String, dynamic>;
-        return OvMemoryHit(
-          uri: obj['uri'] as String? ?? '',
-          score: (obj['score'] as num?)?.toDouble() ?? 0.0,
-          snippet: (obj['abstract'] as String? ?? ''),
-          category: obj['category'] as String? ?? '',
-        );
-      }).toList();
-      return OvSearchResult(hits: hits);
+      // 检索结果分布在 memories / resources / skills 三段，需合并后按相关度排序
+      final segments = [
+        result?['memories'],
+        result?['resources'],
+        result?['skills'],
+      ];
+      final seen = <String>{};
+      final hits = <OvMemoryHit>[];
+      for (final seg in segments) {
+        final list = seg as List<dynamic>?;
+        if (list == null) continue;
+        for (final item in list) {
+          final obj = item as Map<String, dynamic>;
+          final uri = (obj['uri'] as String? ?? '');
+          if (uri.isNotEmpty && !seen.add(uri)) continue;
+          hits.add(OvMemoryHit(
+            uri: uri,
+            score: (obj['score'] as num?)?.toDouble() ?? 0.0,
+            snippet: (obj['abstract'] as String? ?? ''),
+            category: obj['category'] as String? ?? '',
+          ));
+        }
+      }
+      if (hits.isEmpty) return OvSearchResult.empty;
+      hits.sort((a, b) => b.score.compareTo(a.score));
+      return OvSearchResult(hits: hits.take(limit).toList());
     } catch (_) { return OvSearchResult.empty; }
   }
 
