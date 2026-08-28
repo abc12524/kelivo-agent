@@ -41,6 +41,7 @@ jobs:
           EOF
 
       - name: 🧹 Free disk space
+        continue-on-error: true
         run: |
           sudo rm -rf /usr/share/dotnet /opt/hostedtoolcache/heroku /opt/hostedtoolcache/go
           docker system prune -af 2>/dev/null || true
@@ -95,6 +96,7 @@ jobs:
 
       - name: 🚀 发布到 Release
         if: github.event_name != 'pull_request'
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
