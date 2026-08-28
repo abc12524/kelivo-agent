@@ -20,6 +20,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: 🔧 git safe.directory
+        run: git config --global --add safe.directory '*'
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
