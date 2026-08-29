@@ -13,6 +13,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      PUB_HOSTED_URL: "https://pub.flutter-io.cn"
 
     steps:
       - name: Checkout
