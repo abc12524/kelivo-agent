@@ -1,10 +1,6 @@
 name: Build Kelivo Agent APK
 
 on:
-  push:
-    branches: [main, master]
-  pull_request:
-    branches: [main, master]
   workflow_dispatch:
 
 permissions:
@@ -17,9 +13,6 @@ jobs:
       PUB_HOSTED_URL: "https://pub.flutter-io.cn"
     container:
       image: flutter-build:local
-      volumes:
-        - /mnt/cache/gradle:/root/.gradle
-        - /mnt/cache/pub:/root/.pub-cache
 
     steps:
       - name: Checkout
