@@ -15,6 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PUB_HOSTED_URL: "https://pub.flutter-io.cn"
+    container:
+      image: flutter-build:local
+      volumes:
+        - /mnt/cache/gradle:/root/.gradle
+        - /mnt/cache/pub:/root/.pub-cache
 
     steps:
       - name: Checkout
