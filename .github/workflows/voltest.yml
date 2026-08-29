@@ -1,0 +1,13 @@
+name: voltest
+on:
+  workflow_dispatch:
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    container:
+      image: flutter-build:local
+      volumes:
+        - /mnt/cache/gradle:/root/.gradle
+        - /mnt/cache/pub:/root/.pub-cache
+    steps:
+      - run: ls -la /root/.gradle && echo MOUNT_OK
