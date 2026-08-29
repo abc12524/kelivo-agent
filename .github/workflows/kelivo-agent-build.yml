@@ -81,7 +81,6 @@ jobs:
 
       - name: 🏗️ 构建 Release APK (arm64-v8a)
         run: |
-          rm -rf ~/.gradle
           flutter pub get
           flutter build apk --release --split-debug-info=build/symbols --obfuscate
 
@@ -91,30 +90,39 @@ jobs:
           mv app-release.apk "Kelivo_android_${VERSION}_arm64-v8a.apk"
 
       - name: 📤 上传构建产物
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: kelivo-agent-arm64-v8a
           path: build/app/outputs/flutter-apk/Kelivo_android_*.apk
           if-no-files-found: error
 
       - name: 📤 上传调试符号（崩溃解析用）
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: kelivo-symbols-${{ env.VERSION }}
           path: build/symbols
           if-no-files-found: warn
 
-      - name: 🚀 发布到 Release
+      - name: 🚀 发布到 Gitea Release
         if: github.event_name != 'pull_request'
         continue-on-error: true
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ env.TAG }}
-          name: Kelivo v${{ env.VERSION }}
-          body: |
-            Kelivo Agent Release APK（arm64-v8a）
-            - 版本: v${{ env.VERSION }}
-            - 构建号: ${{ github.run_number }}
-            - 提交: ${{ github.sha }}
-          prerelease: false
-          files: build/app/outputs/flutter-apk/Kelivo_android_*.apk
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          API="http://192.168.30.181:3000/api/v1/repos/hollow/kelivo-agent"
+          AUTH="Authorization: token $GITEA_TOKEN"
+          # 已存在则复用，否则创建
+          REL=$(curl -s -X POST "$API/releases" -H "$AUTH" -H "Content-Type: application/json" \
+            -d "{\"tag_name\":\"${{ env.TAG }}\",\"name\":\"Kelivo v${{ env.VERSION }}\",\"body\":\"CI 自动构建\\n- 版本: v${{ env.VERSION }}\\n- 构建号: ${{ github.run_number }}\\n- 提交: ${{ github.sha }}\",\"prerelease\":false}")
+          REL_ID=$(echo "$REL" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+          if [ -z "$REL_ID" ]; then
+            REL_ID=$(curl -s "$API/releases/tags/${{ env.TAG }}" -H "$AUTH" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+          fi
+          echo "release id=$REL_ID"
+          for f in build/app/outputs/flutter-apk/Kelivo_android_*.apk; do
+            echo "uploading $f"
+            curl -s -X POST "$API/releases/$REL_ID/assets?name=$(basename "$f")" \
+              -H "$AUTH" -H "Content-Type: application/octet-stream" \
+              --data-binary "@$f"
+          done
+          echo "✅ 已发布到 Release ${{ env.TAG }}"
