@@ -968,7 +968,7 @@ class SettingsProvider extends ChangeNotifier {
     _hapticsOnCardTap = prefs.getBool(_displayHapticsOnCardTapKey) ?? true;
     // Apply global haptics to service layer
     Haptics.setEnabled(_hapticsGlobalEnabled);
-    _showAppUpdates = prefs.getBool(_displayShowAppUpdatesKey) ?? true;
+    _showAppUpdates = prefs.getBool(_displayShowAppUpdatesKey) ?? false;
     _keepSidebarOpenOnAssistantTap =
         prefs.getBool(_displayKeepSidebarOpenOnAssistantTapKey) ?? false;
     _keepSidebarOpenOnTopicTap =
