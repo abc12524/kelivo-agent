@@ -11,8 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PUB_HOSTED_URL: "https://pub.flutter-io.cn"
-    container:
-      image: flutter-build:local
 
     steps:
       - name: Checkout
