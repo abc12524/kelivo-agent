@@ -6,6 +6,7 @@ import '../../../core/models/chat_message.dart';
 import '../../../core/models/conversation.dart';
 import '../../../core/models/token_usage.dart';
 import '../../../core/providers/assistant_provider.dart';
+import '../../../core/providers/openviking_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/api/chat_api_service.dart';
 import '../../../core/services/chat/chat_service.dart';
@@ -1548,6 +1549,29 @@ class ChatActions {
     onMaybeGenerateSuggestions?.call(conversationId);
 
     await _finishIosBackgroundGeneration(success: true);
+
+    // 对话自动上传：把本轮新增消息捕获到 OpenViking Session（静默，不影响主对话）
+    _maybeCaptureOpenVikingConversation(conversationId);
+  }
+
+  /// 对话自动上传：把会话消息增量上传到 OpenViking Session 并提取长期记忆。
+  /// 仅在启用 OpenViking + 自动上传时执行；内部静默吞错。
+  void _maybeCaptureOpenVikingConversation(String conversationId) {
+    try {
+      final ovProvider = contextProvider.read<OpenVikingProvider>();
+      if (!ovProvider.enabled ||
+          !ovProvider.isConfigured ||
+          !ovProvider.autoCapture) {
+        return;
+      }
+      final svc = ovProvider.service;
+      if (svc == null) return;
+      final messages = chatService.getMessages(conversationId);
+      if (messages.isEmpty) return;
+      unawaited(svc.captureSession(conversationId, messages));
+    } catch (_) {
+      // 静默跳过
+    }
   }
 
   /// Handle stream error.

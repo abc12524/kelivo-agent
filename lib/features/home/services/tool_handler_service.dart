@@ -598,18 +598,43 @@ class ToolHandlerService {
       {
         'type': 'function',
         'function': {
+          'name': 'openviking_find',
+          'description':
+              '在 OpenViking 外置记忆中做纯向量语义搜索（低延迟、可限定范围），查找之前保存的知识、偏好、项目信息等',
+          'parameters': {
+            'type': 'object',
+            'properties': {
+              'query': {'type': 'string', 'description': '搜索关键词，描述要查找什么内容'},
+              'target_uri': {
+                'type': 'string',
+                'description':
+                    '可选。限定检索范围，如 viking://user/{user}/memories/ 或 viking://resources/{project}/',
+              },
+            },
+            'required': ['query'],
+          },
+        },
+      },
+      {
+        'type': 'function',
+        'function': {
           'name': 'openviking_remember',
-          'description': '将重要信息保存到 OpenViking 外置记忆中，以便后续对话回忆。适合保存：用户偏好、项目配置、关键决策、有用的操作经验',
+          'description':
+              '将重要信息保存到 OpenViking 外置记忆中，以便后续对话回忆。适合保存：用户偏好、项目配置、关键决策、有用的操作经验',
           'parameters': {
             'type': 'object',
             'properties': {
               'category': {
                 'type': 'string',
                 'enum': ['preferences', 'entities', 'events', 'experiences'],
-                'description': '记忆分类：preferences=用户偏好, entities=项目/概念/人物, events=决策/里程碑, experiences=操作经验',
+                'description':
+                    '记忆分类：preferences=用户偏好, entities=项目/概念/人物, events=决策/里程碑, experiences=操作经验',
               },
               'name': {'type': 'string', 'description': '记忆名称/主题'},
-              'content': {'type': 'string', 'description': '要保存的内容（Markdown 格式）'},
+              'content': {
+                'type': 'string',
+                'description': '要保存的内容（Markdown 格式）',
+              },
             },
             'required': ['category', 'name', 'content'],
           },
@@ -619,7 +644,8 @@ class ToolHandlerService {
         'type': 'function',
         'function': {
           'name': 'openviking_read',
-          'description': '通过 URI 读取 OpenViking 记忆中的单个文件内容。URI 格式: viking://user/{user}/...',
+          'description':
+              '通过 URI 读取 OpenViking 记忆中的单个文件内容。URI 格式: viking://user/{user}/...',
           'parameters': {
             'type': 'object',
             'properties': {
@@ -638,7 +664,10 @@ class ToolHandlerService {
             'type': 'object',
             'properties': {
               'uri': {'type': 'string', 'description': '目录 URI'},
-              'recursive': {'type': 'boolean', 'description': '是否递归列出子目录（默认 false）'},
+              'recursive': {
+                'type': 'boolean',
+                'description': '是否递归列出子目录（默认 false）',
+              },
             },
             'required': ['uri'],
           },
@@ -648,12 +677,16 @@ class ToolHandlerService {
         'type': 'function',
         'function': {
           'name': 'openviking_write_file',
-          'description': '写入内容到 OpenViking 记忆文件。支持三种模式：create=创建新文件, replace=覆盖已有文件, append=追加内容',
+          'description':
+              '写入内容到 OpenViking 记忆文件。支持三种模式：create=创建新文件, replace=覆盖已有文件, append=追加内容',
           'parameters': {
             'type': 'object',
             'properties': {
               'uri': {'type': 'string', 'description': '文件 URI'},
-              'content': {'type': 'string', 'description': '要写入的内容（Markdown 格式）'},
+              'content': {
+                'type': 'string',
+                'description': '要写入的内容（Markdown 格式）',
+              },
               'mode': {
                 'type': 'string',
                 'enum': ['create', 'replace', 'append'],
@@ -686,7 +719,10 @@ class ToolHandlerService {
           'parameters': {
             'type': 'object',
             'properties': {
-              'session_id': {'type': 'string', 'description': '可选。自定义 session_id (UUID 格式)。不传则自动生成'},
+              'session_id': {
+                'type': 'string',
+                'description': '可选。自定义 session_id (UUID 格式)。不传则自动生成',
+              },
             },
             'required': [],
           },
@@ -701,7 +737,11 @@ class ToolHandlerService {
             'type': 'object',
             'properties': {
               'session_id': {'type': 'string', 'description': 'Session ID'},
-              'role': {'type': 'string', 'enum': ['user', 'assistant'], 'description': '消息角色'},
+              'role': {
+                'type': 'string',
+                'enum': ['user', 'assistant'],
+                'description': '消息角色',
+              },
               'content': {'type': 'string', 'description': '消息内容'},
             },
             'required': ['session_id', 'role', 'content'],
@@ -712,12 +752,16 @@ class ToolHandlerService {
         'type': 'function',
         'function': {
           'name': 'openviking_commit_session',
-          'description': '提交/归档 OpenViking Session，触发从会话内容中提取结构化长期记忆。commit 之后不要再次 add_message',
+          'description':
+              '提交/归档 OpenViking Session，触发从会话内容中提取结构化长期记忆。commit 之后不要再次 add_message',
           'parameters': {
             'type': 'object',
             'properties': {
               'session_id': {'type': 'string', 'description': 'Session ID'},
-              'keep_recent_count': {'type': 'integer', 'description': '保留最近 N 条消息在活跃 session 中。0=归档所有消息（默认）'},
+              'keep_recent_count': {
+                'type': 'integer',
+                'description': '保留最近 N 条消息在活跃 session 中。0=归档所有消息（默认）',
+              },
             },
             'required': ['session_id'],
           },
@@ -727,20 +771,32 @@ class ToolHandlerService {
   }
 
   /// Handle OpenViking tool calls. Returns null if not an OV tool.
-  Future<String?> _handleOvToolCall(String name, Map<String, dynamic> args) async {
+  Future<String?> _handleOvToolCall(
+    String name,
+    Map<String, dynamic> args,
+  ) async {
     const ovTools = [
-      'openviking_search', 'openviking_remember', 'openviking_read',
-      'openviking_list_dir', 'openviking_write_file', 'openviking_delete_file',
-      'openviking_create_session', 'openviking_add_message', 'openviking_commit_session',
+      'openviking_search',
+      'openviking_find',
+      'openviking_remember',
+      'openviking_read',
+      'openviking_list_dir',
+      'openviking_write_file',
+      'openviking_delete_file',
+      'openviking_create_session',
+      'openviking_add_message',
+      'openviking_commit_session',
     ];
     if (!ovTools.contains(name)) return null;
 
     OpenVikingService? svc;
     try {
       final ovProvider = contextProvider.read<OpenVikingProvider>();
-      if (!ovProvider.isConfigured) return jsonEncode({'error': 'OpenViking not configured'});
+      if (!ovProvider.isConfigured)
+        return jsonEncode({'error': 'OpenViking not configured'});
       svc = ovProvider.service;
-      if (svc == null) return jsonEncode({'error': 'OpenViking service not available'});
+      if (svc == null)
+        return jsonEncode({'error': 'OpenViking service not available'});
     } catch (e) {
       return jsonEncode({'error': 'Failed to read OpenViking config: $e'});
     }
@@ -761,16 +817,28 @@ class ToolHandlerService {
         final ovProvider = contextProvider.read<OpenVikingProvider>();
         final threshold = ovProvider.threshold;
         final limit = ovProvider.displayCount;
-        final resp = await http.post(
-          Uri.parse('$base/api/v1/search/search'),
-          headers: headers,
-          body: jsonEncode({'query': query, 'score_threshold': threshold, 'limit': limit}),
-        ).timeout(const Duration(seconds: 15));
-        if (resp.statusCode != 200) return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
+        final resp = await http
+            .post(
+              Uri.parse('$base/api/v1/search/search'),
+              headers: headers,
+              body: jsonEncode({
+                'query': query,
+                'score_threshold': threshold,
+                'limit': limit,
+              }),
+            )
+            .timeout(const Duration(seconds: 15));
+        if (resp.statusCode != 200)
+          return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
         final body = jsonDecode(resp.body);
         final result = body['result'] as Map? ?? {};
         final mems = result['memories'] as List? ?? [];
-        if (mems.isEmpty) return jsonEncode({'success': true, 'results': [], 'message': 'No results'});
+        if (mems.isEmpty)
+          return jsonEncode({
+            'success': true,
+            'results': [],
+            'message': 'No results',
+          });
         final hits = mems.take(8).map((m) {
           final obj = m as Map;
           return {
@@ -783,45 +851,140 @@ class ToolHandlerService {
         return jsonEncode({'success': true, 'results': hits});
       }
 
+      if (name == 'openviking_find') {
+        final query = (args['query'] ?? '').toString().trim();
+        if (query.isEmpty) return jsonEncode({'error': 'query is required'});
+        final targetUri = (args['target_uri'] ?? '').toString().trim();
+        final ovProvider = contextProvider.read<OpenVikingProvider>();
+        final threshold = ovProvider.findThreshold;
+        final limit = ovProvider.findLimit;
+        final buildPayload = (double t) => <String, dynamic>{
+          'query': query,
+          'score_threshold': t,
+          'limit': limit,
+          if (targetUri.isNotEmpty) 'target_uri': targetUri,
+        };
+        final parseHits = (Map body) {
+          final result = body['result'] as Map? ?? {};
+          final seen = <String>{};
+          final hits =
+              [result['memories'], result['resources'], result['skills']]
+                  .whereType<List>()
+                  .expand((list) => list)
+                  .map((m) {
+                    final obj = m as Map;
+                    final uri = (obj['uri'] ?? '').toString();
+                    if (uri.isNotEmpty && !seen.add(uri)) return null;
+                    return {
+                      'uri': uri,
+                      'score': (obj['score'] as num?)?.toDouble() ?? 0.0,
+                      'snippet': (obj['abstract'] as String? ?? '').toString(),
+                      'category': obj['category'] ?? '',
+                    };
+                  })
+                  .whereType<Map<dynamic, dynamic>>()
+                  .toList();
+          return hits;
+        };
+        Future<List<Map<dynamic, dynamic>>> postFind(double t) async {
+          final resp = await http
+              .post(
+                Uri.parse('$base/api/v1/search/find'),
+                headers: headers,
+                body: jsonEncode(buildPayload(t)),
+              )
+              .timeout(const Duration(seconds: 15));
+          if (resp.statusCode != 200) return const [];
+          final body = jsonDecode(resp.body);
+          return parseHits(body as Map);
+        }
+
+        var hits = await postFind(threshold);
+        if (threshold > 0 &&
+            (hits.isEmpty || (hits.length <= 1 && threshold >= 0.3))) {
+          final fb = await postFind(0.0);
+          if (fb.length > hits.length) hits = fb;
+        }
+        if (hits.isEmpty)
+          return jsonEncode({
+            'success': true,
+            'results': [],
+            'message': 'No results',
+          });
+        return jsonEncode({'success': true, 'results': hits.take(8).toList()});
+      }
+
       if (name == 'openviking_remember') {
         final category = (args['category'] ?? 'entities').toString().trim();
         final name = (args['name'] ?? 'untitled').toString().trim();
         final content = (args['content'] ?? '').toString().trim();
-        if (content.isEmpty) return jsonEncode({'error': 'content is required'});
-        final uri = 'viking://user/$user/peers/default/memories/$category/$name.md';
+        if (content.isEmpty)
+          return jsonEncode({'error': 'content is required'});
+        final uri =
+            'viking://user/$user/peers/default/memories/$category/$name.md';
 
         // Try replace first; if NOT_FOUND/404, retry with create (aligned with Android-agent)
-        final resp = await http.post(
-          Uri.parse('$base/api/v1/content/write'),
-          headers: headers,
-          body: jsonEncode({'uri': uri, 'content': content, 'mode': 'replace', 'wait': true}),
-        ).timeout(const Duration(seconds: 15));
+        final resp = await http
+            .post(
+              Uri.parse('$base/api/v1/content/write'),
+              headers: headers,
+              body: jsonEncode({
+                'uri': uri,
+                'content': content,
+                'mode': 'replace',
+                'wait': true,
+              }),
+            )
+            .timeout(const Duration(seconds: 15));
 
         if (resp.statusCode == 200) {
           final b = jsonDecode(resp.body);
-          final errCode = b['error'] is Map ? b['error']['code']?.toString() ?? '' : '';
-          if (b['status'] == 'ok') return jsonEncode({'success': true, 'uri': uri});
+          final errCode = b['error'] is Map
+              ? b['error']['code']?.toString() ?? ''
+              : '';
+          if (b['status'] == 'ok')
+            return jsonEncode({'success': true, 'uri': uri});
           if (errCode.contains('NOT_FOUND')) {
             // File doesn't exist, create it
-            final retry = await http.post(
-              Uri.parse('$base/api/v1/content/write'),
-              headers: headers,
-              body: jsonEncode({'uri': uri, 'content': content, 'mode': 'create', 'wait': false}),
-            ).timeout(const Duration(seconds: 15));
-            if (retry.statusCode == 200) return jsonEncode({'success': true, 'uri': uri});
-            return jsonEncode({'error': 'Create failed: HTTP ${retry.statusCode}'});
+            final retry = await http
+                .post(
+                  Uri.parse('$base/api/v1/content/write'),
+                  headers: headers,
+                  body: jsonEncode({
+                    'uri': uri,
+                    'content': content,
+                    'mode': 'create',
+                    'wait': false,
+                  }),
+                )
+                .timeout(const Duration(seconds: 15));
+            if (retry.statusCode == 200)
+              return jsonEncode({'success': true, 'uri': uri});
+            return jsonEncode({
+              'error': 'Create failed: HTTP ${retry.statusCode}',
+            });
           }
           return jsonEncode({'error': '$errCode'});
         }
         // 404 fallback (file doesn't exist)
         if (resp.statusCode == 404) {
-          final retry = await http.post(
-            Uri.parse('$base/api/v1/content/write'),
-            headers: headers,
-            body: jsonEncode({'uri': uri, 'content': content, 'mode': 'create', 'wait': false}),
-          ).timeout(const Duration(seconds: 15));
-          if (retry.statusCode == 200) return jsonEncode({'success': true, 'uri': uri});
-          return jsonEncode({'error': 'Create failed: HTTP ${retry.statusCode}'});
+          final retry = await http
+              .post(
+                Uri.parse('$base/api/v1/content/write'),
+                headers: headers,
+                body: jsonEncode({
+                  'uri': uri,
+                  'content': content,
+                  'mode': 'create',
+                  'wait': false,
+                }),
+              )
+              .timeout(const Duration(seconds: 15));
+          if (retry.statusCode == 200)
+            return jsonEncode({'success': true, 'uri': uri});
+          return jsonEncode({
+            'error': 'Create failed: HTTP ${retry.statusCode}',
+          });
         }
         return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
       }
@@ -829,11 +992,16 @@ class ToolHandlerService {
       if (name == 'openviking_read') {
         final uri = (args['uri'] ?? '').toString().trim();
         if (uri.isEmpty) return jsonEncode({'error': 'uri is required'});
-        final resp = await http.get(
-          Uri.parse('$base/api/v1/content/read?uri=${Uri.encodeComponent(uri)}'),
-          headers: headers,
-        ).timeout(const Duration(seconds: 15));
-        if (resp.statusCode != 200) return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
+        final resp = await http
+            .get(
+              Uri.parse(
+                '$base/api/v1/content/read?uri=${Uri.encodeComponent(uri)}',
+              ),
+              headers: headers,
+            )
+            .timeout(const Duration(seconds: 15));
+        if (resp.statusCode != 200)
+          return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
         final body = jsonDecode(resp.body);
         final content = body['content'] ?? resp.body;
         return jsonEncode({'success': true, 'uri': uri, 'content': content});
@@ -843,11 +1011,16 @@ class ToolHandlerService {
         final uri = (args['uri'] ?? '').toString().trim();
         if (uri.isEmpty) return jsonEncode({'error': 'uri is required'});
         final recursive = args['recursive'] == true;
-        final resp = await http.get(
-          Uri.parse('$base/api/v1/fs/tree?uri=${Uri.encodeComponent(uri)}${recursive ? '&recursive=true' : ''}'),
-          headers: headers,
-        ).timeout(const Duration(seconds: 15));
-        if (resp.statusCode != 200) return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
+        final resp = await http
+            .get(
+              Uri.parse(
+                '$base/api/v1/fs/tree?uri=${Uri.encodeComponent(uri)}${recursive ? '&recursive=true' : ''}',
+              ),
+              headers: headers,
+            )
+            .timeout(const Duration(seconds: 15));
+        if (resp.statusCode != 200)
+          return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
         return jsonEncode({'success': true, 'tree': jsonDecode(resp.body)});
       }
 
@@ -856,38 +1029,55 @@ class ToolHandlerService {
         final content = (args['content'] ?? '').toString().trim();
         final mode = (args['mode'] ?? 'replace').toString().trim();
         if (uri.isEmpty) return jsonEncode({'error': 'uri is required'});
-        if (content.isEmpty) return jsonEncode({'error': 'content is required'});
-        final resp = await http.post(
-          Uri.parse('$base/api/v1/content/write'),
-          headers: headers,
-          body: jsonEncode({'uri': uri, 'content': content, 'mode': mode, 'wait': mode != 'create'}),
-        ).timeout(const Duration(seconds: 15));
-        if (resp.statusCode == 200) return jsonEncode({'success': true, 'uri': uri, 'mode': mode});
+        if (content.isEmpty)
+          return jsonEncode({'error': 'content is required'});
+        final resp = await http
+            .post(
+              Uri.parse('$base/api/v1/content/write'),
+              headers: headers,
+              body: jsonEncode({
+                'uri': uri,
+                'content': content,
+                'mode': mode,
+                'wait': mode != 'create',
+              }),
+            )
+            .timeout(const Duration(seconds: 15));
+        if (resp.statusCode == 200)
+          return jsonEncode({'success': true, 'uri': uri, 'mode': mode});
         return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
       }
 
       if (name == 'openviking_delete_file') {
         final uri = (args['uri'] ?? '').toString().trim();
         if (uri.isEmpty) return jsonEncode({'error': 'uri is required'});
-        final resp = await http.delete(
-          Uri.parse('$base/api/v1/fs?uri=${Uri.encodeComponent(uri)}'),
-          headers: headers,
-        ).timeout(const Duration(seconds: 15));
-        if (resp.statusCode == 200) return jsonEncode({'success': true, 'uri': uri});
+        final resp = await http
+            .delete(
+              Uri.parse('$base/api/v1/fs?uri=${Uri.encodeComponent(uri)}'),
+              headers: headers,
+            )
+            .timeout(const Duration(seconds: 15));
+        if (resp.statusCode == 200)
+          return jsonEncode({'success': true, 'uri': uri});
         return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
       }
 
       if (name == 'openviking_create_session') {
         final sessionId = (args['session_id'] ?? '').toString().trim();
         final payload = sessionId.isNotEmpty ? {'session_id': sessionId} : {};
-        final resp = await http.post(
-          Uri.parse('$base/api/v1/sessions'),
-          headers: headers,
-          body: jsonEncode(payload),
-        ).timeout(const Duration(seconds: 15));
+        final resp = await http
+            .post(
+              Uri.parse('$base/api/v1/sessions'),
+              headers: headers,
+              body: jsonEncode(payload),
+            )
+            .timeout(const Duration(seconds: 15));
         if (resp.statusCode == 200) {
           final body = jsonDecode(resp.body);
-          return jsonEncode({'success': true, 'result': body['result'] ?? body});
+          return jsonEncode({
+            'success': true,
+            'result': body['result'] ?? body,
+          });
         }
         return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
       }
@@ -896,16 +1086,22 @@ class ToolHandlerService {
         final sessionId = (args['session_id'] ?? '').toString().trim();
         final role = (args['role'] ?? '').toString().trim();
         final content = (args['content'] ?? '').toString().trim();
-        if (sessionId.isEmpty) return jsonEncode({'error': 'session_id is required'});
+        if (sessionId.isEmpty)
+          return jsonEncode({'error': 'session_id is required'});
         if (role.isEmpty) return jsonEncode({'error': 'role is required'});
-        final resp = await http.post(
-          Uri.parse('$base/api/v1/sessions/$sessionId/messages'),
-          headers: headers,
-          body: jsonEncode({'role': role, 'content': content}),
-        ).timeout(const Duration(seconds: 15));
+        final resp = await http
+            .post(
+              Uri.parse('$base/api/v1/sessions/$sessionId/messages'),
+              headers: headers,
+              body: jsonEncode({'role': role, 'content': content}),
+            )
+            .timeout(const Duration(seconds: 15));
         if (resp.statusCode == 200) {
           final body = jsonDecode(resp.body);
-          return jsonEncode({'success': true, 'result': body['result'] ?? body});
+          return jsonEncode({
+            'success': true,
+            'result': body['result'] ?? body,
+          });
         }
         return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
       }
@@ -913,15 +1109,21 @@ class ToolHandlerService {
       if (name == 'openviking_commit_session') {
         final sessionId = (args['session_id'] ?? '').toString().trim();
         final keepRecent = (args['keep_recent_count'] as num?)?.toInt() ?? 0;
-        if (sessionId.isEmpty) return jsonEncode({'error': 'session_id is required'});
-        final resp = await http.post(
-          Uri.parse('$base/api/v1/sessions/$sessionId/commit'),
-          headers: headers,
-          body: jsonEncode({'keep_recent_count': keepRecent}),
-        ).timeout(const Duration(seconds: 15));
+        if (sessionId.isEmpty)
+          return jsonEncode({'error': 'session_id is required'});
+        final resp = await http
+            .post(
+              Uri.parse('$base/api/v1/sessions/$sessionId/commit'),
+              headers: headers,
+              body: jsonEncode({'keep_recent_count': keepRecent}),
+            )
+            .timeout(const Duration(seconds: 15));
         if (resp.statusCode == 200) {
           final body = jsonDecode(resp.body);
-          return jsonEncode({'success': true, 'result': body['result'] ?? body});
+          return jsonEncode({
+            'success': true,
+            'result': body['result'] ?? body,
+          });
         }
         return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
       }
@@ -929,6 +1131,8 @@ class ToolHandlerService {
       return jsonEncode({'error': 'OpenViking call failed: $e'});
     }
 
-    return jsonEncode({'error': 'OpenViking tool internal error: unexpected flow'});
+    return jsonEncode({
+      'error': 'OpenViking tool internal error: unexpected flow',
+    });
   }
 }

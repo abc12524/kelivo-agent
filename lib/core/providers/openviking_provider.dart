@@ -10,6 +10,9 @@ class OpenVikingProvider extends ChangeNotifier {
   static const _wKey = 'ov_user_v1';
   static const _tKey = 'ov_threshold_v1';
   static const _dKey = 'ov_display_count_v1';
+  static const _fTKey = 'ov_find_threshold_v1';
+  static const _fLKey = 'ov_find_limit_v1';
+  static const _cKey = 'ov_auto_capture_v1';
 
   bool _enabled = false;
   String _url = '';
@@ -17,6 +20,9 @@ class OpenVikingProvider extends ChangeNotifier {
   String _user = 'default';
   double _threshold = 0.35;
   int _displayCount = 3;
+  double _findThreshold = 0.4;
+  int _findLimit = 3;
+  bool _autoCapture = true;
 
   bool get enabled => _enabled;
   String get url => _url;
@@ -24,12 +30,17 @@ class OpenVikingProvider extends ChangeNotifier {
   String get user => _user;
   double get threshold => _threshold;
   int get displayCount => _displayCount;
+  double get findThreshold => _findThreshold;
+  int get findLimit => _findLimit;
+  bool get autoCapture => _autoCapture;
 
   OpenVikingService? _service;
   OpenVikingService? get service => _service;
   bool get isConfigured => _url.isNotEmpty && _apiKey.isNotEmpty;
 
-  OpenVikingProvider() { _load(); }
+  OpenVikingProvider() {
+    _load();
+  }
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -39,6 +50,9 @@ class OpenVikingProvider extends ChangeNotifier {
     _user = prefs.getString(_wKey) ?? 'default';
     _threshold = prefs.getDouble(_tKey) ?? 0.35;
     _displayCount = prefs.getInt(_dKey) ?? 3;
+    _findThreshold = prefs.getDouble(_fTKey) ?? 0.4;
+    _findLimit = prefs.getInt(_fLKey) ?? 3;
+    _autoCapture = prefs.getBool(_cKey) ?? true;
     _rebuildService();
     notifyListeners();
   }
@@ -88,5 +102,23 @@ class OpenVikingProvider extends ChangeNotifier {
     _displayCount = v.clamp(0, 20);
     notifyListeners();
     (await SharedPreferences.getInstance()).setInt(_dKey, _displayCount);
+  }
+
+  Future<void> setFindThreshold(double v) async {
+    _findThreshold = v;
+    notifyListeners();
+    (await SharedPreferences.getInstance()).setDouble(_fTKey, v);
+  }
+
+  Future<void> setFindLimit(int v) async {
+    _findLimit = v.clamp(0, 20);
+    notifyListeners();
+    (await SharedPreferences.getInstance()).setInt(_fLKey, _findLimit);
+  }
+
+  Future<void> setAutoCapture(bool v) async {
+    _autoCapture = v;
+    notifyListeners();
+    (await SharedPreferences.getInstance()).setBool(_cKey, v);
   }
 }

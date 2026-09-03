@@ -259,12 +259,13 @@ class MessageGenerationService {
       if (userText.isEmpty) return null;
       final ovCtx = await ovProvider.service!.loadContext(
         userText,
-        scoreThreshold: ovProvider.threshold,
-        displayCount: ovProvider.displayCount,
+        scoreThreshold: ovProvider.findThreshold,
+        displayCount: ovProvider.findLimit,
       );
       if (ovCtx.isEmpty) return null;
-      final content =
-          MessageBuilderService.buildOpenVikingInjectionContent(ovCtx);
+      final content = MessageBuilderService.buildOpenVikingInjectionContent(
+        ovCtx,
+      );
       return chatService.addMessage(
         conversationId: conversationId,
         role: 'user',

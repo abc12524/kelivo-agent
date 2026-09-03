@@ -58,6 +58,10 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
               _switchRow(cs, '启用 OpenViking', ov.enabled, (v) {
                 ov.setEnabled(v);
               }),
+              _divider(cs),
+              _switchRow(cs, '自动上传对话', ov.autoCapture, (v) {
+                ov.setAutoCapture(v);
+              }),
             ],
           ),
           const SizedBox(height: 12),
@@ -121,6 +125,34 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+
+          // Auto-injection (find) settings
+          _sectionHeader('自动注入(find)', cs),
+          _sectionCard(
+            cs,
+            children: [
+              _sliderRow(
+                cs,
+                label: 'find 分数阈值: ' + ov.findThreshold.toStringAsFixed(2),
+                value: ov.findThreshold,
+                min: 0.0,
+                max: 1.0,
+                divisions: 20,
+                onChanged: (v) => ov.setFindThreshold(v),
+              ),
+              _divider(cs),
+              _sliderRow(
+                cs,
+                label: 'find 显示条数: ' + ov.findLimit.toString(),
+                value: ov.findLimit.toDouble(),
+                min: 0,
+                max: 20,
+                divisions: 20,
+                onChanged: (v) => ov.setFindLimit(v.round()),
+              ),
+            ],
+          ),
           const SizedBox(height: 24),
 
           // Status
@@ -131,7 +163,10 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
                 ov.enabled
                     ? '✔️ OpenViking 已配置并启用，对话时自动检索相关记忆'
                     : '⚠️ OpenViking 已配置但未启用',
-                style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.6)),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: cs.onSurface.withValues(alpha: 0.6),
+                ),
               ),
             )
           else
@@ -139,7 +174,10 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
                 '⚠️ 请配置服务器地址和 API Key',
-                style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.6)),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: cs.onSurface.withValues(alpha: 0.6),
+                ),
               ),
             ),
         ],
@@ -149,9 +187,13 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
 
   Widget _sectionHeader(String text, ColorScheme cs) => Padding(
     padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
-    child: Text(text,
-      style: TextStyle(fontSize: 13, fontWeight: AppFontWeights.semibold,
-        color: cs.onSurface.withValues(alpha: 0.8)),
+    child: Text(
+      text,
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: AppFontWeights.semibold,
+        color: cs.onSurface.withValues(alpha: 0.8),
+      ),
     ),
   );
 
@@ -161,25 +203,45 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
       decoration: BoxDecoration(
         color: isDark ? Colors.white10 : Colors.white.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: isDark ? 0.08 : 0.06), width: 0.6),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: isDark ? 0.08 : 0.06),
+          width: 0.6,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Column(children: children)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(children: children),
+      ),
     );
   }
 
   Widget _divider(ColorScheme cs) => Divider(
-    height: 6, thickness: 0.6, indent: 16, endIndent: 12,
+    height: 6,
+    thickness: 0.6,
+    indent: 16,
+    endIndent: 12,
     color: cs.outlineVariant.withValues(alpha: 0.18),
   );
 
-  Widget _switchRow(ColorScheme cs, String label, bool value, ValueChanged<bool> onChanged) {
+  Widget _switchRow(
+    ColorScheme cs,
+    String label,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         children: [
           Expanded(
-            child: Text(label, style: TextStyle(fontSize: 15, color: cs.onSurface.withValues(alpha: 0.9))),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                color: cs.onSurface.withValues(alpha: 0.9),
+              ),
+            ),
           ),
           Switch(value: value, onChanged: onChanged),
         ],
@@ -187,9 +249,14 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
     );
   }
 
-  Widget _textFieldRow(ColorScheme cs, {required String label, required String hint,
-    required TextEditingController controller, ValueChanged<String>? onChanged,
-    bool obscure = false}) {
+  Widget _textFieldRow(
+    ColorScheme cs, {
+    required String label,
+    required String hint,
+    required TextEditingController controller,
+    ValueChanged<String>? onChanged,
+    bool obscure = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
@@ -197,8 +264,13 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
-            child: Text(label, style: TextStyle(fontSize: 13,
-              color: cs.onSurface.withValues(alpha: 0.7))),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                color: cs.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
           ),
           TextField(
             controller: controller,
@@ -206,8 +278,13 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
             decoration: InputDecoration(
               hintText: hint,
               isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             style: TextStyle(fontSize: 14, color: cs.onSurface),
             onChanged: onChanged,
@@ -217,9 +294,15 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
     );
   }
 
-  Widget _sliderRow(ColorScheme cs, {required String label, required double value,
-    required double min, required double max, int? divisions,
-    required ValueChanged<double> onChanged}) {
+  Widget _sliderRow(
+    ColorScheme cs, {
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    int? divisions,
+    required ValueChanged<double> onChanged,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Column(
@@ -227,10 +310,21 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 2),
-            child: Text(label, style: TextStyle(fontSize: 13,
-              color: cs.onSurface.withValues(alpha: 0.7))),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                color: cs.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
           ),
-          Slider(value: value, min: min, max: max, divisions: divisions, onChanged: onChanged),
+          Slider(
+            value: value,
+            min: min,
+            max: max,
+            divisions: divisions,
+            onChanged: onChanged,
+          ),
         ],
       ),
     );
