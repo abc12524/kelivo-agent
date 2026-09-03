@@ -9,8 +9,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      PUB_HOSTED_URL: "https://pub.flutter-io.cn"
 
     steps:
       - name: Checkout
@@ -94,26 +92,15 @@ jobs:
           path: build/symbols
           if-no-files-found: warn
 
-      - name: 🚀 发布到 Gitea Release
-        if: github.event_name != 'pull_request'
-        continue-on-error: true
-        env:
-          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
-        run: |
-          API="http://192.168.30.181:3000/api/v1/repos/hollow/kelivo-agent"
-          AUTH="Authorization: token $GITEA_TOKEN"
-          # 已存在则复用，否则创建
-          REL=$(curl -s -X POST "$API/releases" -H "$AUTH" -H "Content-Type: application/json" \
-            -d "{\"tag_name\":\"${{ env.TAG }}\",\"name\":\"Kelivo v${{ env.VERSION }}\",\"body\":\"CI 自动构建\\n- 版本: v${{ env.VERSION }}\\n- 构建号: ${{ github.run_number }}\\n- 提交: ${{ github.sha }}\",\"prerelease\":false}")
-          REL_ID=$(echo "$REL" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
-          if [ -z "$REL_ID" ]; then
-            REL_ID=$(curl -s "$API/releases/tags/${{ env.TAG }}" -H "$AUTH" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
-          fi
-          echo "release id=$REL_ID"
-          for f in build/app/outputs/flutter-apk/Kelivo_android_*.apk; do
-            echo "uploading $f"
-            curl -s -X POST "$API/releases/$REL_ID/assets?name=$(basename "$f")" \
-              -H "$AUTH" -H "Content-Type: application/octet-stream" \
-              --data-binary "@$f"
-          done
-          echo "✅ 已发布到 Release ${{ env.TAG }}"
+      - name: 🚀 发布到 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Kelivo v${{ env.VERSION }}
+          body: |
+            CI 自动构建
+            - 版本: v${{ env.VERSION }}
+            - 构建号: ${{ github.run_number }}
+            - 提交: ${{ github.sha }}
+          files: build/app/outputs/flutter-apk/Kelivo_android_*.apk
+          fail_on_unmatched_files: true
