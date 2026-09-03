@@ -83,14 +83,14 @@ jobs:
           mv app-release.apk "Kelivo_android_${VERSION}_arm64-v8a.apk"
 
       - name: 📤 上传构建产物
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: kelivo-agent-arm64-v8a
           path: build/app/outputs/flutter-apk/Kelivo_android_*.apk
           if-no-files-found: error
 
       - name: 📤 上传调试符号（崩溃解析用）
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: kelivo-symbols-${{ env.VERSION }}
           path: build/symbols
