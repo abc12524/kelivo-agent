@@ -254,7 +254,7 @@ class OpenVikingService {
       var c = m.content;
       if (c.contains(_recallMarker)) continue;
       if (m.role != 'user' && m.role != 'assistant') continue;
-      c = c.take(4000);
+      c = c.length > 4000 ? c.substring(0, 4000) : c;
       if (!_shouldCapture(c, m.role)) continue;
       out.add({'role': m.role, 'content': c});
     }
