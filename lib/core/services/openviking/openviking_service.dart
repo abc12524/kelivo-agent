@@ -22,6 +22,7 @@ class OpenVikingService {
       {}; // conversationId -> 已捕获消息 id
 
   static const String _recallMarker = '[自动检索的候选记忆';
+  static const String _peerId = 'kelivo'; // 本 agent 的 peer_id（对齐 hermes 插件：assistant 消息才带）
 
   Map<String, String> get _headers => {
     'Authorization': 'Bearer $apiKey',
@@ -256,7 +257,9 @@ class OpenVikingService {
       if (m.role != 'user' && m.role != 'assistant') continue;
       c = c.length > 4000 ? c.substring(0, 4000) : c;
       if (!_shouldCapture(c, m.role)) continue;
-      out.add({'role': m.role, 'content': c});
+      final msg = <String, String>{'role': m.role, 'content': c};
+      if (m.role == 'assistant') msg['peer_id'] = _peerId;
+      out.add(msg);
     }
     return out;
   }
