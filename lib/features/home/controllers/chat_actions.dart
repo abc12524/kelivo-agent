@@ -1568,7 +1568,17 @@ class ChatActions {
       if (svc == null) return;
       final messages = chatService.getMessages(conversationId);
       if (messages.isEmpty) return;
-      unawaited(svc.captureSession(conversationId, messages));
+      final toolEventsById = <String, List<Map<String, dynamic>>>{
+        for (final m in messages)
+          if (m.role == 'assistant') m.id: chatService.getToolEvents(m.id),
+      };
+      unawaited(
+        svc.captureSession(
+          conversationId,
+          messages,
+          toolEventsById: toolEventsById,
+        ),
+      );
     } catch (_) {
       // 静默跳过
     }

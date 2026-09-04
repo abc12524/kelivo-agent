@@ -22,7 +22,8 @@ class OpenVikingService {
       {}; // conversationId -> 已捕获消息 id
 
   static const String _recallMarker = '[自动检索的候选记忆';
-  static const String _peerId = 'kelivo'; // 本 agent 的 peer_id（对齐 hermes 插件：assistant 消息才带）
+  static const String _peerId =
+      'kelivo'; // 本 agent 的 peer_id（对齐 hermes 插件：assistant 消息才带）
 
   Map<String, String> get _headers => {
     'Authorization': 'Bearer $apiKey',
@@ -177,8 +178,9 @@ class OpenVikingService {
   /// （带噪音过滤，跳过自动注入的检索/记忆块与短回复）。失败静默，不影响主对话。
   Future<void> captureSession(
     String conversationId,
-    List<ChatMessage> messages,
-  ) async {
+    List<ChatMessage> messages, {
+    Map<String, List<Map<String, dynamic>>>? toolEventsById,
+  }) async {
     if (baseUrl.isEmpty || messages.isEmpty) return;
     try {
       final captured = _capturedIds.putIfAbsent(
@@ -195,7 +197,7 @@ class OpenVikingService {
       if (ovSession == null) return;
       _ovSessions[conversationId] = ovSession;
 
-      final ovMessages = _toOvMessages(newMessages);
+      final ovMessages = _toOvMessages(newMessages, toolEventsById);
       if (ovMessages.isEmpty) return;
 
       await _client
@@ -247,19 +249,62 @@ class OpenVikingService {
     }
   }
 
-  /// 把聊天消息转成 OV session 的 {role, content} 列表（对齐 android-agent 的
-  /// toOvMessages + shouldCapture：跳过自动注入块、命令、短回复与无意义文本）。
-  List<Map<String, String>> _toOvMessages(List<ChatMessage> messages) {
-    final out = <Map<String, String>>[];
+  /// 把聊天消息转成 OV session 消息列表（对齐 opencode 插件 buildCapturePayload：
+  /// 纯文本发 {role, content}，含工具调用发 {role, parts}，assistant 消息带 peer_id。
+  /// 跳过自动注入块、命令、短回复与无意义文本。工具调用取自已持久化的 tool_events。
+  List<Map<String, dynamic>> _toOvMessages(
+    List<ChatMessage> messages,
+    Map<String, List<Map<String, dynamic>>>? toolEventsById,
+  ) {
+    final out = <Map<String, dynamic>>[];
     for (final m in messages) {
       var c = m.content;
       if (c.contains(_recallMarker)) continue;
       if (m.role != 'user' && m.role != 'assistant') continue;
       c = c.length > 4000 ? c.substring(0, 4000) : c;
-      if (!_shouldCapture(c, m.role)) continue;
-      final msg = <String, String>{'role': m.role, 'content': c};
-      if (m.role == 'assistant') msg['peer_id'] = _peerId;
-      out.add(msg);
+      final textCaptured = _shouldCapture(c, m.role);
+
+      if (m.role == 'user') {
+        if (!textCaptured) continue;
+        out.add({'role': 'user', 'content': c});
+        continue;
+      }
+
+      // assistant
+      final tools = _toolParts(toolEventsById?[m.id] ?? const []);
+      if (tools.isNotEmpty) {
+        final parts = <Map<String, dynamic>>[];
+        if (textCaptured) parts.add({'type': 'text', 'text': c});
+        parts.addAll(tools);
+        out.add({'role': 'assistant', 'parts': parts, 'peer_id': _peerId});
+      } else {
+        if (!textCaptured) continue;
+        out.add({'role': 'assistant', 'content': c, 'peer_id': _peerId});
+      }
+    }
+    return out;
+  }
+
+  /// 把已持久化的工具事件转成 OV 的 tool part（对齐 hermes.json 的 tool 结构）。
+  List<Map<String, dynamic>> _toolParts(List<Map<String, dynamic>> events) {
+    final out = <Map<String, dynamic>>[];
+    for (final e in events) {
+      final name = (e['name'] ?? '').toString().trim();
+      if (name.isEmpty) continue;
+      final id = (e['id'] ?? '').toString().trim();
+      final content = (e['content'] ?? '').toString();
+      final part = <String, dynamic>{
+        'type': 'tool',
+        'tool_id': id,
+        'tool_name': name,
+        'tool_status': 'completed',
+      };
+      final args = e['arguments'];
+      if (args is Map) part['tool_input'] = args;
+      part['tool_output'] = content.length > 4000
+          ? content.substring(0, 4000)
+          : content;
+      out.add(part);
     }
     return out;
   }
