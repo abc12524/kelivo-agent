@@ -67,7 +67,7 @@ class OpenVikingService {
     return hits.take(limit).toList();
   }
 
-  /// 带阈值兜底放宽的搜索：阈值过高吞掉相关记忆时放宽到 0 再试一次，取结果更多的一次。
+  /// 严格按给定阈值检索：不越权放宽阈值，低分命中对注入没有意义。
   Future<OvSearchResult> _searchByEndpoint({
     required String path,
     required String query,
@@ -83,21 +83,7 @@ class OpenVikingService {
         'limit': limit,
       };
       if (targetUri.isNotEmpty) payload['target_uri'] = targetUri;
-
-      var hits = await _postSearch(path, payload, limit);
-      if (scoreThreshold > 0 &&
-          (hits.isEmpty || (hits.length <= 1 && scoreThreshold >= 0.3))) {
-        final fallbackPayload =
-            {
-                  'query': query,
-                  'score_threshold': 0.0,
-                  'limit': limit,
-                  if (targetUri.isNotEmpty) 'target_uri': targetUri,
-                }
-                as Map<String, dynamic>;
-        final fb = await _postSearch(path, fallbackPayload, limit);
-        if (fb.length > hits.length) hits = fb;
-      }
+      final hits = await _postSearch(path, payload, limit);
       return OvSearchResult(hits: hits);
     } catch (_) {
       return OvSearchResult.empty;

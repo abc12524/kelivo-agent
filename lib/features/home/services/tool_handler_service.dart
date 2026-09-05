@@ -578,6 +578,18 @@ class ToolHandlerService {
     return null;
   }
 
+  /// Clamp an LLM-provided score threshold to [0,1], falling back to [fallback].
+  static double _clampThreshold(Object? v, double fallback) {
+    if (v is num) return v.toDouble().clamp(0.0, 1.0).toDouble();
+    return fallback;
+  }
+
+  /// Clamp an LLM-provided result limit to [0,20], falling back to [fallback].
+  static int _clampLimit(Object? v, int fallback) {
+    if (v is num) return v.toInt().clamp(0, 20).toInt();
+    return fallback;
+  }
+
   /// Build OpenViking tool definitions. (Aligned with Android-agent reference)
   static List<Map<String, dynamic>> _buildOvToolDefinitions() {
     return [
@@ -590,6 +602,14 @@ class ToolHandlerService {
             'type': 'object',
             'properties': {
               'query': {'type': 'string', 'description': '搜索关键词，描述要查找什么内容'},
+              'score_threshold': {
+                'type': 'number',
+                'description': '可选。相似度阈值 [0-1]，越高越严格，不传用设置页默认值(0.35)',
+              },
+              'limit': {
+                'type': 'integer',
+                'description': '可选。返回条数上限 [0-20]，不传用设置页默认值(3)',
+              },
             },
             'required': ['query'],
           },
@@ -609,6 +629,14 @@ class ToolHandlerService {
                 'type': 'string',
                 'description':
                     '可选。限定检索范围，如 viking://user/{user}/memories/ 或 viking://resources/{project}/',
+              },
+              'score_threshold': {
+                'type': 'number',
+                'description': '可选。相似度阈值 [0-1]，越高越严格，不传用设置页默认值(0.4)',
+              },
+              'limit': {
+                'type': 'integer',
+                'description': '可选。返回条数上限 [0-20]，不传用设置页默认值(3)',
               },
             },
             'required': ['query'],
@@ -815,15 +843,16 @@ class ToolHandlerService {
         final query = (args['query'] ?? '').toString().trim();
         if (query.isEmpty) return jsonEncode({'error': 'query is required'});
         final ovProvider = contextProvider.read<OpenVikingProvider>();
-        final threshold = ovProvider.threshold;
-        final limit = ovProvider.displayCount;
+        final scoreThreshold =
+            _clampThreshold(args['score_threshold'], ovProvider.threshold);
+        final limit = _clampLimit(args['limit'], ovProvider.displayCount);
         final resp = await http
             .post(
               Uri.parse('$base/api/v1/search/search'),
               headers: headers,
               body: jsonEncode({
                 'query': query,
-                'score_threshold': threshold,
+                'score_threshold': scoreThreshold,
                 'limit': limit,
               }),
             )
@@ -839,7 +868,7 @@ class ToolHandlerService {
             'results': [],
             'message': 'No results',
           });
-        final hits = mems.take(8).map((m) {
+        final hits = mems.take(limit).map((m) {
           final obj = m as Map;
           return {
             'uri': obj['uri'] ?? '',
@@ -856,8 +885,11 @@ class ToolHandlerService {
         if (query.isEmpty) return jsonEncode({'error': 'query is required'});
         final targetUri = (args['target_uri'] ?? '').toString().trim();
         final ovProvider = contextProvider.read<OpenVikingProvider>();
-        final threshold = ovProvider.findThreshold;
-        final limit = ovProvider.findLimit;
+        final scoreThreshold = _clampThreshold(
+          args['score_threshold'],
+          ovProvider.findThreshold,
+        );
+        final limit = _clampLimit(args['limit'], ovProvider.findLimit);
         final buildPayload = (double t) => <String, dynamic>{
           'query': query,
           'score_threshold': t,
@@ -899,19 +931,17 @@ class ToolHandlerService {
           return parseHits(body as Map);
         }
 
-        var hits = await postFind(threshold);
-        if (threshold > 0 &&
-            (hits.isEmpty || (hits.length <= 1 && threshold >= 0.3))) {
-          final fb = await postFind(0.0);
-          if (fb.length > hits.length) hits = fb;
-        }
+        final hits = await postFind(scoreThreshold);
         if (hits.isEmpty)
           return jsonEncode({
             'success': true,
             'results': [],
             'message': 'No results',
           });
-        return jsonEncode({'success': true, 'results': hits.take(8).toList()});
+        return jsonEncode({
+          'success': true,
+          'results': hits.take(limit).toList(),
+        });
       }
 
       if (name == 'openviking_remember') {
