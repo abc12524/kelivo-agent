@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
@@ -391,6 +392,7 @@ class KelivoS3Helper {
     S3Config cfg, {
     required String key,
     bool returnBase64 = false,
+    String? downloadPath,
   }) async {
     final uri = _buildObjectUri(cfg, key);
     final res = await _sendRequest(cfg, method: 'GET', uri: uri);
@@ -403,6 +405,21 @@ class KelivoS3Helper {
     final contentLength = res.headers['content-length'] ?? '0';
     final lastModified = res.headers['last-modified'] ?? '';
     final etag = res.headers['etag'] ?? '';
+
+    if (downloadPath != null && downloadPath.isNotEmpty) {
+      final f = File(downloadPath);
+      await f.parent.create(recursive: true);
+      await f.writeAsBytes(res.bodyBytes);
+      return {
+        'success': true,
+        'savedTo': downloadPath,
+        'key': key,
+        'contentType': contentType,
+        'contentLength': int.tryParse(contentLength) ?? 0,
+        'lastModified': lastModified,
+        'etag': etag,
+      };
+    }
 
     if (returnBase64) {
       return {
@@ -788,17 +805,31 @@ class KelivoS3McpServerEngine {
           cfg,
           key: key,
           returnBase64: arguments['returnBase64'] == true,
+          downloadPath: arguments['filePath']?.toString(),
         );
 
       case 's3_put_object':
         final key = arguments['key']?.toString();
         if (key == null || key.isEmpty) throw ArgumentError('key is required');
-        final body = arguments['body']?.toString();
-        if (body == null) throw ArgumentError('body is required');
+        final filePath = arguments['filePath']?.toString();
+        final List<int> body;
+        if (filePath != null && filePath.isNotEmpty) {
+          final f = File(filePath);
+          if (!await f.exists()) {
+            throw ArgumentError('File not found via filePath: $filePath');
+          }
+          body = await f.readAsBytes();
+        } else {
+          final bodyStr = arguments['body']?.toString();
+          if (bodyStr == null) {
+            throw ArgumentError('body or filePath is required');
+          }
+          body = utf8.encode(bodyStr);
+        }
         return KelivoS3Helper.putObject(
           cfg,
           key: key,
-          body: utf8.encode(body),
+          body: body,
           contentType: arguments['contentType']?.toString(),
         );
 
@@ -934,7 +965,7 @@ class KelivoS3McpServerEngine {
       {
         'name': 's3_get_object',
         'description':
-            'Download an object from S3. Returns content as text or base64.',
+            'Download an object from S3. Returns content as text/base64, or saves it to a local path when filePath is provided.',
         'inputSchema': {
           'type': 'object',
           'properties': {
@@ -943,24 +974,38 @@ class KelivoS3McpServerEngine {
               'type': 'boolean',
               'description': 'Return content as base64 (for binary files)',
             },
+            'filePath': {
+              'type': 'string',
+              'description':
+                  'Optional local path to save the downloaded object to (overrides returnBase64)',
+            },
           },
           'required': ['key'],
         },
       },
       {
         'name': 's3_put_object',
-        'description': 'Upload an object to S3',
+        'description':
+            'Upload an object to S3. Provide body (text) or filePath (upload a local file).',
         'inputSchema': {
           'type': 'object',
           'properties': {
             'key': {'type': 'string', 'description': 'Object key'},
-            'body': {'type': 'string', 'description': 'Object content'},
+            'body': {
+              'type': 'string',
+              'description': 'Object content (either body or filePath)',
+            },
+            'filePath': {
+              'type': 'string',
+              'description':
+                  'Local file path to upload (alternative to body)',
+            },
             'contentType': {
               'type': 'string',
               'description': 'Content type (optional)',
             },
           },
-          'required': ['key', 'body'],
+          'required': ['key'],
         },
       },
       {
