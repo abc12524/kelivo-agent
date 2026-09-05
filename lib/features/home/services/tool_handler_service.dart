@@ -411,13 +411,23 @@ class ToolHandlerService {
           if (ovResult != null) return ovResult;
         } catch (_) {}
 
-        // Device tools (GPS, sensor, shell, SSH, etc.)
-        try {
-          final deviceResult = await DeviceToolsService.execute(name, args);
-          if (deviceResult.isNotEmpty) {
-            return deviceResult;
-          }
-        } catch (_) {}
+        // MCP tools must run before device tools, otherwise the native
+        // MethodChannel (app.tools) fallthrough intercepts MCP tool names
+        // (e.g. s3_list_buckets) before they can reach the MCP engine.
+        final selectedMpcIds =
+            (assistant?.mcpServerIds ?? const <String>[]).toSet();
+        final isMcpTool = mcp.connectedServers
+            .where((s) => selectedMpcIds.contains(s.id))
+            .any((s) => s.tools.any((t) => t.enabled && t.name == name));
+        if (!isMcpTool) {
+          // Device tools (GPS, sensor, shell, SSH, etc.)
+          try {
+            final deviceResult = await DeviceToolsService.execute(name, args);
+            if (deviceResult.isNotEmpty) {
+              return deviceResult;
+            }
+          } catch (_) {}
+        }
 
         if (name == LocalToolNames.askUser &&
             assistant != null &&
