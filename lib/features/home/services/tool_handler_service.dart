@@ -411,24 +411,9 @@ class ToolHandlerService {
           if (ovResult != null) return ovResult;
         } catch (_) {}
 
-        // MCP tools must run before device tools, otherwise the native
-        // MethodChannel (app.tools) fallthrough intercepts MCP tool names
-        // (e.g. s3_list_buckets) before they can reach the MCP engine.
-        final selectedMpcIds =
-            (assistant?.mcpServerIds ?? const <String>[]).toSet();
-        final isMcpTool = mcp.connectedServers
-            .where((s) => selectedMpcIds.contains(s.id))
-            .any((s) => s.tools.any((t) => t.enabled && t.name == name));
-        if (!isMcpTool) {
-          // Device tools (GPS, sensor, shell, SSH, etc.)
-          try {
-            final deviceResult = await DeviceToolsService.execute(name, args);
-            if (deviceResult.isNotEmpty) {
-              return deviceResult;
-            }
-          } catch (_) {}
-        }
-
+        // Ask-user interaction tool — must run before the device-tool
+        // fallthrough, which otherwise intercepts everything it doesn't know
+        // and returns a MethodChannel error, skipping this handler.
         if (name == LocalToolNames.askUser &&
             assistant != null &&
             assistant.localToolIds.contains(LocalToolNames.askUser)) {
@@ -454,6 +439,24 @@ class ToolHandlerService {
               tool: name,
             );
           }
+        }
+
+        // MCP tools must run before device tools, otherwise the native
+        // MethodChannel (app.tools) fallthrough intercepts MCP tool names
+        // (e.g. s3_list_buckets) before they can reach the MCP engine.
+        final selectedMpcIds =
+            (assistant?.mcpServerIds ?? const <String>[]).toSet();
+        final isMcpTool = mcp.connectedServers
+            .where((s) => selectedMpcIds.contains(s.id))
+            .any((s) => s.tools.any((t) => t.enabled && t.name == name));
+        if (!isMcpTool) {
+          // Device tools (GPS, sensor, shell, SSH, etc.)
+          try {
+            final deviceResult = await DeviceToolsService.execute(name, args);
+            if (deviceResult.isNotEmpty) {
+              return deviceResult;
+            }
+          } catch (_) {}
         }
 
         // Approval gate for MCP tools
