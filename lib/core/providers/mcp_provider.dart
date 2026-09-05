@@ -801,10 +801,12 @@ class McpProvider extends ChangeNotifier {
       if (server.transport == McpTransportType.inmemory) {
         // Select the appropriate engine based on server name
         if (server.name == '@kelivo/s3' || server.id == 'kelivo_s3') {
-          // Use the S3 config the user entered under Settings -> Models & Services
-          // -> Object Storage, falling back to an empty config if not set.
-          final s3Config = _settings?.s3Config ?? const S3Config();
-          final engine = KelivoS3McpServerEngine(s3Config);
+          // Read the live S3 config (Settings -> Models & Services -> Object
+          // Storage) on every tool call so that config changes take effect
+          // without reconnecting. Falls back to an empty config if not set.
+          final engine = KelivoS3McpServerEngine(
+            () => _settings?.s3Config ?? const S3Config(),
+          );
           final transport = KelivoS3InMemoryClientTransport(engine);
           final client = mcp.McpClient.createClient(clientConfig);
           await client.connect(transport);

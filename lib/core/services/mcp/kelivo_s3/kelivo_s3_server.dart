@@ -691,9 +691,11 @@ class KelivoS3Helper {
 /// Minimal JSON-RPC server for MCP that serves @kelivo/s3 tools.
 class KelivoS3McpServerEngine {
   bool _closed = false;
-  final S3Config _config;
+  final S3Config Function() _configProvider;
 
-  KelivoS3McpServerEngine(this._config);
+  KelivoS3McpServerEngine(this._configProvider);
+
+  S3Config get _config => _configProvider();
 
   Future<dynamic> handleMessage(dynamic message) async {
     if (_closed) return null;
