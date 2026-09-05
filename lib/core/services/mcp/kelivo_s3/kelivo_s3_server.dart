@@ -367,9 +367,14 @@ class KelivoS3Helper {
         .findAllElements('NextContinuationToken', namespace: '*')
         .map((e) => e.innerText.trim())
         .firstWhere((s) => s.isNotEmpty, orElse: () => '');
+    final commonPrefixes = doc
+        .findAllElements('CommonPrefixes', namespace: '*')
+        .map((e) => e.getElement('Prefix', namespace: '*')?.innerText ?? '')
+        .toList();
 
     return {
       'objects': objects,
+      'commonPrefixes': commonPrefixes,
       'isTruncated': isTruncated,
       'nextContinuationToken': nextToken,
       'name':
