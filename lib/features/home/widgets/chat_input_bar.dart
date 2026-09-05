@@ -377,30 +377,42 @@ class _ChatInputBarState extends State<ChatInputBar>
     final text = _controller.text.trim();
     if (text.isEmpty && _images.isEmpty && _docs.isEmpty) return;
     _isSubmitting = true;
+    final rawText = _controller.text;
+    final snapshot = ChatInputData(
+      text: text,
+      imagePaths: List.of(_images),
+      documents: List.of(_docs),
+      allowImagesApiRouting: _allowImagesApiRouting,
+    );
+    // Clear the input immediately so the UI responds at once, even though the
+    // actual send (e.g. OpenViking context injection) may take a moment in the
+    // background. If it later fails we restore the draft so nothing is lost.
+    _clearDraft();
     try {
       final result =
-          await widget.onSend?.call(
-            ChatInputData(
-              text: text,
-              imagePaths: List.of(_images),
-              documents: List.of(_docs),
-              allowImagesApiRouting: _allowImagesApiRouting,
-            ),
-          ) ??
+          await widget.onSend?.call(snapshot) ??
           ChatInputSubmissionResult.rejected;
       if (!mounted) return;
-      if (result == ChatInputSubmissionResult.sent ||
-          result == ChatInputSubmissionResult.queued) {
-        _controller.clear();
-        _images.clear();
-        _docs.clear();
-        setState(() {});
-        // Keep focus on desktop so user can continue typing
-        try {
-          if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-            widget.focusNode?.requestFocus();
-          }
-        } catch (_) {}
+      if (result == ChatInputSubmissionResult.rejected) {
+        _restoreInput(snapshot);
+        _controller.value = TextEditingValue(
+          text: rawText,
+          selection: TextSelection.collapsed(offset: rawText.length),
+        );
+      }
+      // Keep focus on desktop so user can continue typing
+      try {
+        if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+          widget.focusNode?.requestFocus();
+        }
+      } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        _restoreInput(snapshot);
+        _controller.value = TextEditingValue(
+          text: rawText,
+          selection: TextSelection.collapsed(offset: rawText.length),
+        );
       }
     } finally {
       _isSubmitting = false;
