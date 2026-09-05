@@ -6,6 +6,7 @@ import '../models/backup.dart';
 import '../services/mcp/kelivo_fetch/kelivo_fetch_server.dart';
 import '../services/mcp/kelivo_s3/kelivo_s3_server.dart';
 import '../services/mcp/stdio_command_resolver.dart';
+import 'settings_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -259,9 +260,11 @@ class McpProvider extends ChangeNotifier {
   final McpStdioCommandResolver _stdioCommandResolver =
       McpStdioCommandResolver();
 
-  McpProvider() {
+  McpProvider({SettingsProvider? settings}) : _settings = settings {
     _load();
   }
+
+  final SettingsProvider? _settings;
 
   List<McpServerConfig> get servers => List.unmodifiable(_servers);
   McpStatus statusFor(String id) => _status[id] ?? McpStatus.idle;
@@ -798,9 +801,9 @@ class McpProvider extends ChangeNotifier {
       if (server.transport == McpTransportType.inmemory) {
         // Select the appropriate engine based on server name
         if (server.name == '@kelivo/s3' || server.id == 'kelivo_s3') {
-          // For S3, we need the configuration from settings
-          // For now, use a default config - the user will need to configure S3 settings
-          final s3Config = S3Config(); // Default config
+          // Use the S3 config the user entered under Settings -> Models & Services
+          // -> Object Storage, falling back to an empty config if not set.
+          final s3Config = _settings?.s3Config ?? const S3Config();
           final engine = KelivoS3McpServerEngine(s3Config);
           final transport = KelivoS3InMemoryClientTransport(engine);
           final client = mcp.McpClient.createClient(clientConfig);
