@@ -331,10 +331,7 @@ class McpProvider extends ChangeNotifier {
 
   void _ensureBuiltinS3ServerPresent() {
     final exists = _servers.any(
-      (s) =>
-          s.transport == McpTransportType.inmemory ||
-          s.name == '@kelivo/s3' ||
-          s.id == 'kelivo_s3',
+      (s) => s.name == '@kelivo/s3' || s.id == 'kelivo_s3',
     );
     if (exists) return;
     final cfg = McpServerConfig(
