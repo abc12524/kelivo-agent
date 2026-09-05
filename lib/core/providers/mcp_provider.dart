@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:mcp_client/mcp_client.dart' as mcp;
+import '../models/backup.dart';
 import '../services/mcp/kelivo_fetch/kelivo_fetch_server.dart';
+import '../services/mcp/kelivo_s3/kelivo_s3_server.dart';
 import '../services/mcp/stdio_command_resolver.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -293,6 +295,8 @@ class McpProvider extends ChangeNotifier {
     }
     // Ensure built-in @kelivo/fetch is present by default
     _ensureBuiltinFetchServerPresent();
+    // Ensure built-in @kelivo/s3 is present by default
+    _ensureBuiltinS3ServerPresent();
     // initialize statuses
     for (final s in _servers) {
       _status[s.id] = McpStatus.idle;
@@ -319,6 +323,24 @@ class McpProvider extends ChangeNotifier {
       id: 'kelivo_fetch',
       enabled: true,
       name: '@kelivo/fetch',
+      transport: McpTransportType.inmemory,
+      tools: const <McpToolConfig>[], // will refresh on connect
+    );
+    _servers = [..._servers, cfg];
+  }
+
+  void _ensureBuiltinS3ServerPresent() {
+    final exists = _servers.any(
+      (s) =>
+          s.transport == McpTransportType.inmemory ||
+          s.name == '@kelivo/s3' ||
+          s.id == 'kelivo_s3',
+    );
+    if (exists) return;
+    final cfg = McpServerConfig(
+      id: 'kelivo_s3',
+      enabled: false, // Disabled by default, user needs to configure S3 first
+      name: '@kelivo/s3',
       transport: McpTransportType.inmemory,
       tools: const <McpToolConfig>[], // will refresh on connect
     );
@@ -777,17 +799,36 @@ class McpProvider extends ChangeNotifier {
 
       // In-memory builtin server path
       if (server.transport == McpTransportType.inmemory) {
-        final engine = KelivoFetchMcpServerEngine();
-        final transport = KelivoInMemoryClientTransport(engine);
-        final client = mcp.McpClient.createClient(clientConfig);
-        await client.connect(transport);
-        _clients[id] = client;
-        _status[id] = McpStatus.connected;
-        _errors.remove(id);
-        notifyListeners();
-        await refreshTools(id);
-        _startHeartbeat(id);
-        return;
+        // Select the appropriate engine based on server name
+        if (server.name == '@kelivo/s3' || server.id == 'kelivo_s3') {
+          // For S3, we need the configuration from settings
+          // For now, use a default config - the user will need to configure S3 settings
+          final s3Config = S3Config(); // Default config
+          final engine = KelivoS3McpServerEngine(s3Config);
+          final transport = KelivoS3InMemoryClientTransport(engine);
+          final client = mcp.McpClient.createClient(clientConfig);
+          await client.connect(transport);
+          _clients[id] = client;
+          _status[id] = McpStatus.connected;
+          _errors.remove(id);
+          notifyListeners();
+          await refreshTools(id);
+          _startHeartbeat(id);
+          return;
+        } else {
+          // Default to fetch server
+          final engine = KelivoFetchMcpServerEngine();
+          final transport = KelivoInMemoryClientTransport(engine);
+          final client = mcp.McpClient.createClient(clientConfig);
+          await client.connect(transport);
+          _clients[id] = client;
+          _status[id] = McpStatus.connected;
+          _errors.remove(id);
+          notifyListeners();
+          await refreshTools(id);
+          _startHeartbeat(id);
+          return;
+        }
       }
 
       final mergedHeaders = <String, String>{...server.headers};

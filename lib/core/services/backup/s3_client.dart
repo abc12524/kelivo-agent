@@ -938,4 +938,251 @@ class S3BackupClient {
     if (bucketError != null) throw bucketError;
     return const [];
   }
+
+  /// Copy an object within the same bucket
+  Future<void> copyObject(
+    S3Config cfg, {
+    required String sourceKey,
+    required String destinationKey,
+  }) async {
+    _validateConfigBasics(cfg);
+    final source =
+        '/${cfg.bucket.trim()}/${sourceKey.startsWith('/') ? sourceKey.substring(1) : sourceKey}';
+    final uri = _buildObjectUri(cfg, destinationKey);
+    final res = await _sendSigned(
+      cfg,
+      method: 'PUT',
+      uri: uri,
+      headers: {'x-amz-copy-source': source},
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('S3 copy failed: ${_extractErrorMessage(res)}');
+    }
+  }
+
+  /// Get object metadata without downloading the content
+  Future<Map<String, dynamic>> headObject(
+    S3Config cfg, {
+    required String key,
+  }) async {
+    _validateConfigBasics(cfg);
+    final uri = _buildObjectUri(cfg, key);
+    final res = await _sendSigned(cfg, method: 'HEAD', uri: uri);
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('S3 head failed: ${_extractErrorMessage(res)}');
+    }
+    return {
+      'key': key,
+      'contentLength': int.tryParse(res.headers['content-length'] ?? '0') ?? 0,
+      'contentType': res.headers['content-type'] ?? '',
+      'etag': res.headers['etag'] ?? '',
+      'lastModified': res.headers['last-modified'] ?? '',
+      'storageClass': res.headers['x-amz-storage-class'] ?? '',
+      'metadata': Map.fromEntries(
+        res.headers.entries
+            .where((e) => e.key.startsWith('x-amz-meta-'))
+            .map(
+              (e) => MapEntry(e.key.substring('x-amz-meta-'.length), e.value),
+            ),
+      ),
+    };
+  }
+
+  /// Generate a presigned URL for temporary access to an object
+  Future<String> presignUrl(
+    S3Config cfg, {
+    required String key,
+    int expiresIn = 3600,
+  }) async {
+    _validateConfigBasics(cfg);
+    final now = DateTime.now().toUtc();
+    final amzDate = _amzDate(now);
+    final dateStamp = _dateStamp(now);
+    final uri = _buildObjectUri(cfg, key);
+
+    final queryParameters = {
+      'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
+      'X-Amz-Credential':
+          '${cfg.accessKeyId.trim()}/$dateStamp/${cfg.region.trim()}/s3/aws4_request',
+      'X-Amz-Date': amzDate,
+      'X-Amz-Expires': expiresIn.toString(),
+      'X-Amz-SignedHeaders': 'host',
+    };
+
+    final canonicalQueryString = _canonicalQuery(queryParameters);
+    final hostHeader = _hostHeader(uri);
+    final canonicalRequest = [
+      'GET',
+      uri.path.isEmpty ? '/' : uri.path,
+      canonicalQueryString,
+      'host:$hostHeader\n',
+      'host',
+      'UNSIGNED-PAYLOAD',
+    ].join('\n');
+    final canonicalRequestHash = _hashHex(utf8.encode(canonicalRequest));
+    final scope = '$dateStamp/${cfg.region.trim()}/s3/aws4_request';
+    final sts = _stringToSign(
+      amzDate: amzDate,
+      credentialScope: scope,
+      canonicalRequestHash: canonicalRequestHash,
+    );
+    final sig = _signature(
+      secretAccessKey: cfg.secretAccessKey,
+      dateStamp: dateStamp,
+      region: cfg.region.trim(),
+      service: 's3',
+      stringToSign: sts,
+    );
+
+    final presignedUri = uri.replace(
+      queryParameters: {...queryParameters, 'X-Amz-Signature': sig},
+    );
+
+    return presignedUri.toString();
+  }
+
+  /// List all buckets in the S3-compatible storage
+  Future<List<Map<String, dynamic>>> listBuckets(S3Config cfg) async {
+    final base = Uri.parse(_normalizeEndpoint(cfg.endpoint));
+    final uri = Uri(
+      scheme: base.scheme.isEmpty ? 'https' : base.scheme,
+      host: cfg.pathStyle ? base.host : 's3.${cfg.region}.amazonaws.com',
+      port: base.hasPort ? base.port : null,
+      path: '/',
+    );
+
+    final res = await _sendSigned(cfg, method: 'GET', uri: uri);
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('S3 list buckets failed: ${_extractErrorMessage(res)}');
+    }
+
+    final doc = XmlDocument.parse(res.body);
+    final buckets = <Map<String, dynamic>>[];
+    for (final bucket in doc.findAllElements('Bucket', namespace: '*')) {
+      final name = bucket.getElement('Name', namespace: '*')?.innerText ?? '';
+      final creationDate =
+          bucket.getElement('CreationDate', namespace: '*')?.innerText ?? '';
+      buckets.add({'name': name, 'creationDate': creationDate});
+    }
+    return buckets;
+  }
+
+  /// Create a new bucket
+  Future<void> createBucket(S3Config cfg, {required String bucketName}) async {
+    final base = Uri.parse(_normalizeEndpoint(cfg.endpoint));
+    final uri = Uri(
+      scheme: base.scheme.isEmpty ? 'https' : base.scheme,
+      host: cfg.pathStyle ? base.host : 's3.${cfg.region}.amazonaws.com',
+      port: base.hasPort ? base.port : null,
+      path: cfg.pathStyle ? '/$bucketName' : '/',
+    );
+
+    final res = await _sendSigned(
+      cfg,
+      method: 'PUT',
+      uri: uri,
+      headers: {'content-type': 'application/xml'},
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('S3 create bucket failed: ${_extractErrorMessage(res)}');
+    }
+  }
+
+  /// Delete a bucket (must be empty)
+  Future<void> deleteBucket(S3Config cfg, {required String bucketName}) async {
+    final base = Uri.parse(_normalizeEndpoint(cfg.endpoint));
+    final uri = Uri(
+      scheme: base.scheme.isEmpty ? 'https' : base.scheme,
+      host: cfg.pathStyle ? base.host : 's3.${cfg.region}.amazonaws.com',
+      port: base.hasPort ? base.port : null,
+      path: cfg.pathStyle ? '/$bucketName' : '/',
+    );
+
+    final res = await _sendSigned(cfg, method: 'DELETE', uri: uri);
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('S3 delete bucket failed: ${_extractErrorMessage(res)}');
+    }
+  }
+
+  /// Batch delete multiple objects
+  Future<void> deleteObjects(S3Config cfg, {required List<String> keys}) async {
+    _validateConfigBasics(cfg);
+    if (keys.isEmpty) return;
+
+    final deleteXml = StringBuffer('<Delete>');
+    for (final key in keys) {
+      deleteXml.write('<Object><Key>${_xmlEscape(key)}</Key></Object>');
+    }
+    deleteXml.write('</Delete>');
+
+    final bodyBytes = utf8.encode(deleteXml.toString());
+    final base = Uri.parse(_normalizeEndpoint(cfg.endpoint));
+    final host = cfg.pathStyle ? base.host : '${cfg.bucket}.${base.host}';
+    final uri = Uri(
+      scheme: base.scheme.isEmpty ? 'https' : base.scheme,
+      host: host,
+      port: base.hasPort ? base.port : null,
+      path: '/',
+      queryParameters: {'delete': ''},
+    );
+
+    final res = await _sendSigned(
+      cfg,
+      method: 'POST',
+      uri: uri,
+      headers: {'content-type': 'application/xml'},
+      bodyBytes: bodyBytes,
+    );
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('S3 batch delete failed: ${_extractErrorMessage(res)}');
+    }
+  }
+
+  /// Upload object content directly as bytes
+  Future<void> uploadObjectBytes(
+    S3Config cfg, {
+    required String key,
+    required List<int> bytes,
+    String? contentType,
+  }) async {
+    _validateConfigBasics(cfg);
+    final uri = _buildObjectUri(cfg, key);
+    final res = await _sendSigned(
+      cfg,
+      method: 'PUT',
+      uri: uri,
+      headers: {
+        if (contentType != null && contentType.isNotEmpty)
+          'content-type': contentType,
+      },
+      bodyBytes: bytes,
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('S3 upload failed: ${_extractErrorMessage(res)}');
+    }
+  }
+
+  /// Download object content as bytes
+  Future<List<int>> downloadObjectBytes(
+    S3Config cfg, {
+    required String key,
+  }) async {
+    _validateConfigBasics(cfg);
+    final uri = _buildObjectUri(cfg, key);
+    final res = await _sendSigned(cfg, method: 'GET', uri: uri);
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('S3 download failed: ${_extractErrorMessage(res)}');
+    }
+    return res.bodyBytes;
+  }
+
+  static String _xmlEscape(String s) {
+    return s
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&apos;');
+  }
 }
