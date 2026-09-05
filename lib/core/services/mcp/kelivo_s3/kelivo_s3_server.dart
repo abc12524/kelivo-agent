@@ -323,15 +323,7 @@ class KelivoS3Helper {
       if (continuationToken != null) 'continuation-token': continuationToken,
     };
 
-    final base = Uri.parse(_normalizeEndpoint(cfg.endpoint));
-    final host = cfg.pathStyle ? base.host : '${cfg.bucket}.${base.host}';
-    final uri = Uri(
-      scheme: base.scheme.isEmpty ? 'https' : base.scheme,
-      host: host,
-      port: base.hasPort ? base.port : null,
-      path: '/',
-      queryParameters: query,
-    );
+    final uri = _buildObjectUri(cfg, '').replace(queryParameters: query);
 
     final res = await _sendRequest(
       cfg,
@@ -494,15 +486,7 @@ class KelivoS3Helper {
     deleteXml.write('</Delete>');
 
     final bodyBytes = utf8.encode(deleteXml.toString());
-    final base = Uri.parse(_normalizeEndpoint(cfg.endpoint));
-    final host = cfg.pathStyle ? base.host : '${cfg.bucket}.${base.host}';
-    final uri = Uri(
-      scheme: base.scheme.isEmpty ? 'https' : base.scheme,
-      host: host,
-      port: base.hasPort ? base.port : null,
-      path: '/',
-      queryParameters: {'delete': ''},
-    );
+    final uri = _buildObjectUri(cfg, '').replace(queryParameters: {'delete': ''});
 
     final res = await _sendRequest(
       cfg,
@@ -512,11 +496,27 @@ class KelivoS3Helper {
       bodyBytes: bodyBytes,
     );
 
-    if (res.statusCode != 200) {
-      throw Exception('Failed to delete objects: ${res.statusCode}');
+    if (res.statusCode == 200) {
+      return {'success': true, 'deleted': keys};
     }
 
-    return {'success': true, 'deleted': keys};
+    // The service may not implement batch delete (e.g. 501 Not Implemented).
+    // Fall back to deleting each object individually so the call still works.
+    final deleted = <String>[];
+    final errors = <String>[];
+    for (final key in keys) {
+      try {
+        await deleteObject(cfg, key: key);
+        deleted.add(key);
+      } catch (e) {
+        errors.add('$key: ${e.toString()}');
+      }
+    }
+    return {
+      'success': errors.isEmpty,
+      'deleted': deleted,
+      if (errors.isNotEmpty) 'errors': errors,
+    };
   }
 
   // Copy object
