@@ -14,6 +14,8 @@ Future<void> showReasoningBudgetSheet(
   BuildContext context, {
   String? modelProvider,
   String? modelId,
+  int? initialBudget,
+  ValueChanged<int>? onChanged,
 }) async {
   await showModalBottomSheet(
     context: context,
@@ -22,15 +24,32 @@ Future<void> showReasoningBudgetSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (ctx) =>
-        _ReasoningBudgetSheet(modelProvider: modelProvider, modelId: modelId),
+    builder: (ctx) => _ReasoningBudgetSheet(
+      modelProvider: modelProvider,
+      modelId: modelId,
+      initialBudget: initialBudget,
+      onChanged: onChanged,
+    ),
   );
 }
 
 class _ReasoningBudgetSheet extends StatefulWidget {
-  const _ReasoningBudgetSheet({this.modelProvider, this.modelId});
+  const _ReasoningBudgetSheet({
+    this.modelProvider,
+    this.modelId,
+    this.initialBudget,
+    this.onChanged,
+  });
   final String? modelProvider;
   final String? modelId;
+
+  /// Selection to display when opening, without writing it into global
+  /// settings first. Lets callers seed the assistant's own budget without a
+  /// synchronous [SettingsProvider] notify mid route-animation.
+  final int? initialBudget;
+
+  /// Fires only when the user actually picks a value inside the sheet.
+  final ValueChanged<int>? onChanged;
   @override
   State<_ReasoningBudgetSheet> createState() => _ReasoningBudgetSheetState();
 }
@@ -42,13 +61,14 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
   void initState() {
     super.initState();
     final s = context.read<SettingsProvider>();
-    _selected = s.thinkingBudget ?? -1;
+    _selected = widget.initialBudget ?? s.thinkingBudget ?? -1;
   }
 
   Future<void> _select(int value) async {
     setState(() {
       _selected = value;
     });
+    widget.onChanged?.call(value);
     await context.read<SettingsProvider>().setThinkingBudget(value);
   }
 

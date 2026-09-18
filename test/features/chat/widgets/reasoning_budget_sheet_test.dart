@@ -36,6 +36,8 @@ Future<SettingsProvider> _settingsForClaudeModel(
 Future<void> _pumpSheetLauncher(
   WidgetTester tester, {
   required SettingsProvider settings,
+  int? initialBudget,
+  ValueChanged<int>? onChanged,
 }) async {
   await tester.pumpWidget(
     MultiProvider(
@@ -53,7 +55,11 @@ Future<void> _pumpSheetLauncher(
             builder: (context) {
               return TextButton(
                 key: const ValueKey('open-reasoning-sheet'),
-                onPressed: () => showReasoningBudgetSheet(context),
+                onPressed: () => showReasoningBudgetSheet(
+                  context,
+                  initialBudget: initialBudget,
+                  onChanged: onChanged,
+                ),
                 child: const Text('open'),
               );
             },
@@ -101,6 +107,32 @@ void main() {
 
       expect(find.text('Extreme Reasoning'), findsNothing);
       expect(find.text('Maximum Reasoning'), findsNothing);
+    });
+
+    testWidgets('initialBudget seeds selection without pre-writing global', (
+      tester,
+    ) async {
+      final settings = await _settingsForClaudeModel(tester, 'claude-fable-5');
+      await settings.setThinkingBudget(32000);
+
+      int? chosen;
+      await _pumpSheetLauncher(
+        tester,
+        settings: settings,
+        initialBudget: 1024,
+        onChanged: (v) => chosen = v,
+      );
+
+      await _openSheet(tester);
+
+      // Opening the sheet must not overwrite the global setting.
+      expect(settings.thinkingBudget, 32000);
+
+      await tester.tap(find.text('Maximum Reasoning'));
+      await tester.pumpAndSettle();
+
+      expect(chosen, 128000);
+      expect(settings.thinkingBudget, 128000);
     });
   });
 }

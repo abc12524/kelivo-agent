@@ -74,6 +74,17 @@ void main() {
       );
     });
 
+    test('DeepSeek flash id infers reasoning and tool capabilities', () {
+      final flash = ModelRegistry.infer(
+        ModelInfo(id: 'deepseek-flash', displayName: 'deepseek-flash'),
+      );
+
+      expect(
+        flash.abilities,
+        containsAll([ModelAbility.tool, ModelAbility.reasoning]),
+      );
+    });
+
     test('OpenRouter can be routed through Anthropic format explicitly', () {
       final cfg = ProviderConfig(
         id: 'OpenRouterAnthropic',
