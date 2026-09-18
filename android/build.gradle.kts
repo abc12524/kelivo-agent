@@ -2,6 +2,10 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // JitPack must precede the CN mirrors: ucrop (com.github.Yalantis:ucrop)
+        // only exists on JitPack, while the Tencent maven-public mirror can
+        // serve its POM but not the AAR, which fails native-libs resolution.
+        maven { url = uri("https://jitpack.io") }
         maven { url = uri("https://maven.aliyun.com/repository/google") }
         maven { url = uri("https://maven.aliyun.com/repository/central") }
         maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
