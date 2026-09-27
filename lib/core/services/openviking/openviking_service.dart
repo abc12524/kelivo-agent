@@ -157,6 +157,30 @@ class OpenVikingService {
         .join('\n');
   }
 
+  // ========== 删除（遗忘）记忆文件/目录 ==========
+
+  /// 删除指定 URI 的文件或目录（对齐 MCP forget）。
+  /// [recursive] 为 true 时递归删除目录及其所有子项。
+  /// 返回 true 表示删除成功。
+  Future<bool> forget(String uri, {bool recursive = false}) async {
+    final target = uri.trim();
+    if (baseUrl.isEmpty || target.isEmpty) return false;
+    try {
+      final suffix = recursive ? '&recursive=true' : '';
+      final response = await _client
+          .delete(
+            _endpoint(
+              '/api/v1/fs?uri=${Uri.encodeComponent(target)}$suffix',
+            ),
+            headers: _headers,
+          )
+          .timeout(const Duration(seconds: 15));
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ========== 对话自动上传（捕获到 OV Session 并提取长期记忆） ==========
 
   /// 把一段对话捕获到 OpenViking Session 并提取长期记忆（对齐 android-agent 的

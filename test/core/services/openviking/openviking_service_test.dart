@@ -84,4 +84,75 @@ void main() {
       expect(result.hits, isEmpty);
     });
   });
+
+  group('OpenVikingService.forget', () {
+    test('deletes a single file without recursive flag', () async {
+      Uri? captured;
+      final service = OpenVikingService(
+        baseUrl: 'http://ov.local',
+        apiKey: 'key',
+        user: 'u',
+        client: MockClient((req) async {
+          captured = req.url;
+          return http.Response(jsonEncode({'status': 'ok'}), 200);
+        }),
+      );
+
+      final ok = await service.forget('viking://user/u/memories/preferences/a.md');
+
+      expect(ok, isTrue);
+      expect(captured!.path, '/api/v1/fs');
+      expect(captured!.queryParameters['uri'],
+          'viking://user/u/memories/preferences/a.md');
+      expect(captured!.queryParameters.containsKey('recursive'), isFalse);
+    });
+
+    test('passes recursive=true when deleting a directory', () async {
+      Uri? captured;
+      final service = OpenVikingService(
+        baseUrl: 'http://ov.local',
+        apiKey: 'key',
+        user: 'u',
+        client: MockClient((req) async {
+          captured = req.url;
+          return http.Response(jsonEncode({'status': 'ok'}), 200);
+        }),
+      );
+
+      final ok = await service.forget('viking://resources/project', recursive: true);
+
+      expect(ok, isTrue);
+      expect(captured!.queryParameters['uri'], 'viking://resources/project');
+      expect(captured!.queryParameters['recursive'], 'true');
+    });
+
+    test('returns false on non-200 response', () async {
+      final service = OpenVikingService(
+        baseUrl: 'http://ov.local',
+        apiKey: 'key',
+        user: 'u',
+        client: MockClient((_) async => http.Response('not found', 404)),
+      );
+
+      final ok = await service.forget('viking://missing');
+      expect(ok, isFalse);
+    });
+
+    test('returns false for empty uri without issuing a request', () async {
+      var called = false;
+      final service = OpenVikingService(
+        baseUrl: 'http://ov.local',
+        apiKey: 'key',
+        user: 'u',
+        client: MockClient((_) async {
+          called = true;
+          return http.Response('{}', 200);
+        }),
+      );
+
+      final ok = await service.forget('  ');
+      expect(ok, isFalse);
+      expect(called, isFalse);
+    });
+  });
 }

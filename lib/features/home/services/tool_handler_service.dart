@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
@@ -13,6 +14,8 @@ import '../../../core/providers/tts_provider.dart';
 import '../../../core/services/api/chat_api_service.dart';
 import '../../../core/services/mcp/mcp_tool_service.dart';
 import '../../../core/services/openviking/openviking_service.dart';
+import '../../../core/services/deepseek/deepseek_file_service.dart';
+import '../../../core/services/api/builtin_tools.dart';
 import '../../../core/providers/openviking_provider.dart';
 import '../../../core/services/search/search_tool_service.dart';
 import 'ask_user_interaction_service.dart';
@@ -218,6 +221,11 @@ class ToolHandlerService {
       }
     }
 
+    // DeepSeek Files API tools (when a DeepSeek provider is configured)
+    if (supportsTools && _resolveDeepSeekConfig(settings) != null) {
+      toolDefs.addAll(_buildDeepSeekFileToolDefinitions());
+    }
+
     return toolDefs;
   }
 
@@ -409,6 +417,12 @@ class ToolHandlerService {
         try {
           final ovResult = await _handleOvToolCall(name, args);
           if (ovResult != null) return ovResult;
+        } catch (_) {}
+
+        // DeepSeek Files API tools (before DeviceTools fallthrough)
+        try {
+          final dsResult = await _handleDeepSeekFileToolCall(name, args);
+          if (dsResult != null) return dsResult;
         } catch (_) {}
 
         // Ask-user interaction tool — must run before the device-tool
@@ -741,12 +755,17 @@ class ToolHandlerService {
       {
         'type': 'function',
         'function': {
-          'name': 'openviking_delete_file',
-          'description': '通过 URI 删除 OpenViking 记忆中的文件。注意：此操作不可撤销！',
+          'name': 'openviking_forget',
+          'description':
+              '从 OpenViking 记忆中删除文件或目录（对齐 MCP forget）。注意：此操作不可撤销！删除非空目录时必须将 recursive 设为 true',
           'parameters': {
             'type': 'object',
             'properties': {
-              'uri': {'type': 'string', 'description': '要删除的文件 URI'},
+              'uri': {'type': 'string', 'description': '要删除的文件/目录 URI'},
+              'recursive': {
+                'type': 'boolean',
+                'description': '是否递归删除目录及其所有子项（默认 false）',
+              },
             },
             'required': ['uri'],
           },
@@ -811,6 +830,148 @@ class ToolHandlerService {
     ];
   }
 
+  /// Resolve the active DeepSeek provider config, or null when none is configured.
+  ProviderConfig? _resolveDeepSeekConfig(SettingsProvider settings) {
+    for (final cfg in settings.providerConfigs.values) {
+      if (cfg.enabled &&
+          BuiltInToolsHelper.isDeepSeekProvider(cfg) &&
+          cfg.apiKey.isNotEmpty) {
+        return cfg;
+      }
+    }
+    return null;
+  }
+
+  /// Build DeepSeek Files API tool definitions.
+  static List<Map<String, dynamic>> _buildDeepSeekFileToolDefinitions() {
+    return [
+      {
+        'type': 'function',
+        'function': {
+          'name': 'deepseek_file_tool',
+          'description':
+              'DeepSeek 文件暂存空间工具（仅支持图片：JPEG/PNG/GIF/WebP，单文件≤64MiB）。'
+              '支持：upload（上传设备本地图片，返回 file_id）、list（列出已上传文件）、'
+              'retrieve（查询文件信息）、delete（删除文件）、'
+              'recognize（识别设备本地图片内容，内部自动上传并调用 vision 模型）。'
+              'DeepSeek API Key/地址从设置中的 DeepSeek provider 自动读取。',
+          'parameters': {
+            'type': 'object',
+            'properties': {
+              'action': {
+                'type': 'string',
+                'description': '操作类型',
+                'enum': ['upload', 'list', 'retrieve', 'delete', 'recognize'],
+              },
+              'local_path': {
+                'type': 'string',
+                'description': '设备本地文件路径（upload/recognize 时使用）',
+              },
+              'file_id': {
+                'type': 'string',
+                'description': '文件 ID，形如 file-api-...（retrieve/delete 时使用）',
+              },
+              'expires_seconds': {
+                'type': 'integer',
+                'description':
+                    '有效期秒数 3600~2592000（1 小时~30 天），upload/recognize 时使用；默认 7 天；传 0 表示永久有效',
+              },
+              'prompt': {
+                'type': 'string',
+                'description':
+                    '识别图片时的提示词（recognize 时可选，默认“请详细描述这张图片的内容”）',
+              },
+              'after': {
+                'type': 'string',
+                'description': '分页游标 file_id（list 时可选）',
+              },
+              'limit': {
+                'type': 'integer',
+                'description': '返回数量 1~1000（list 时可选，默认 100）',
+              },
+              'order': {
+                'type': 'string',
+                'description': '按创建时间排序（list 时可选）',
+                'enum': ['asc', 'desc'],
+              },
+            },
+            'required': ['action'],
+          },
+        },
+      },
+    ];
+  }
+
+  /// Handle DeepSeek Files API tool calls. Returns null if not this tool.
+  Future<String?> _handleDeepSeekFileToolCall(
+    String name,
+    Map<String, dynamic> args,
+  ) async {
+    if (name != 'deepseek_file_tool') return null;
+    final settings = contextProvider.read<SettingsProvider>();
+    final cfg = _resolveDeepSeekConfig(settings);
+    if (cfg == null) {
+      return jsonEncode({'error': '未配置可用的 DeepSeek provider'});
+    }
+    final svc = DeepSeekFileService(baseUrl: cfg.baseUrl, apiKey: cfg.apiKey);
+    final action = (args['action'] ?? '').toString().trim();
+
+    try {
+      switch (action) {
+        case 'upload':
+          final path = (args['local_path'] ?? '').toString().trim();
+          if (path.isEmpty) return jsonEncode({'error': 'local_path is required'});
+          final expires = (args['expires_seconds'] as num?)?.toInt();
+          final file = File(path);
+          final obj = await svc.upload(
+            file,
+            expiresSeconds: expires ?? DeepSeekFileService.defaultExpiresSeconds,
+          );
+          return jsonEncode({'success': true, ...obj});
+        case 'list':
+          final after = (args['after'] ?? '').toString().trim();
+          final limit = (args['limit'] as num?)?.toInt() ?? 100;
+          final order = (args['order'] ?? 'asc').toString();
+          final body = await svc.list(
+            after: after.isEmpty ? null : after,
+            limit: limit,
+            order: order,
+          );
+          return jsonEncode({'success': true, ...body});
+        case 'retrieve':
+          final fileId = (args['file_id'] ?? '').toString().trim();
+          if (fileId.isEmpty) return jsonEncode({'error': 'file_id is required'});
+          final obj = await svc.retrieve(fileId);
+          return jsonEncode({'success': true, ...obj});
+        case 'delete':
+          final fileId = (args['file_id'] ?? '').toString().trim();
+          if (fileId.isEmpty) return jsonEncode({'error': 'file_id is required'});
+          final deleted = await svc.delete(fileId);
+          return jsonEncode({
+            'success': true,
+            'id': fileId,
+            'deleted': deleted,
+          });
+        case 'recognize':
+          final path = (args['local_path'] ?? '').toString().trim();
+          if (path.isEmpty) return jsonEncode({'error': 'local_path is required'});
+          final prompt = (args['prompt'] ?? '').toString().trim();
+          final expires = (args['expires_seconds'] as num?)?.toInt();
+          final text = await svc.recognize(
+            File(path),
+            prompt: prompt.isEmpty ? '请详细描述这张图片的内容' : prompt,
+            expiresSeconds:
+                expires ?? DeepSeekFileService.defaultExpiresSeconds,
+          );
+          return jsonEncode({'success': true, 'result': text});
+        default:
+          return jsonEncode({'error': '未知操作: $action'});
+      }
+    } catch (e) {
+      return jsonEncode({'error': 'DeepSeek 文件操作失败: $e'});
+    }
+  }
+
   /// Handle OpenViking tool calls. Returns null if not an OV tool.
   Future<String?> _handleOvToolCall(
     String name,
@@ -823,7 +984,7 @@ class ToolHandlerService {
       'openviking_read',
       'openviking_list_dir',
       'openviking_write_file',
-      'openviking_delete_file',
+      'openviking_forget',
       'openviking_create_session',
       'openviking_add_message',
       'openviking_commit_session',
@@ -1091,17 +1252,24 @@ class ToolHandlerService {
         return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
       }
 
-      if (name == 'openviking_delete_file') {
+      if (name == 'openviking_forget') {
         final uri = (args['uri'] ?? '').toString().trim();
+        final recursive = args['recursive'] == true;
         if (uri.isEmpty) return jsonEncode({'error': 'uri is required'});
         final resp = await http
             .delete(
-              Uri.parse('$base/api/v1/fs?uri=${Uri.encodeComponent(uri)}'),
+              Uri.parse(
+                '$base/api/v1/fs?uri=${Uri.encodeComponent(uri)}${recursive ? '&recursive=true' : ''}',
+              ),
               headers: headers,
             )
             .timeout(const Duration(seconds: 15));
         if (resp.statusCode == 200)
-          return jsonEncode({'success': true, 'uri': uri});
+          return jsonEncode({
+            'success': true,
+            'uri': uri,
+            'recursive': recursive,
+          });
         return jsonEncode({'error': 'HTTP ${resp.statusCode}'});
       }
 
