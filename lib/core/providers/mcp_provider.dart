@@ -4,8 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:mcp_client/mcp_client.dart' as mcp;
 import '../models/backup.dart';
 import '../services/mcp/kelivo_fetch/kelivo_fetch_server.dart';
+import '../services/mcp/kelivo_openviking/kelivo_openviking_server.dart';
 import '../services/mcp/kelivo_s3/kelivo_s3_server.dart';
 import '../services/mcp/stdio_command_resolver.dart';
+import 'openviking_provider.dart';
 import 'settings_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -260,11 +262,17 @@ class McpProvider extends ChangeNotifier {
   final McpStdioCommandResolver _stdioCommandResolver =
       McpStdioCommandResolver();
 
-  McpProvider({SettingsProvider? settings}) : _settings = settings {
+  McpProvider({SettingsProvider? settings, OpenVikingProvider? openViking})
+    : _settings = settings,
+      _openViking = openViking {
     _load();
   }
 
   final SettingsProvider? _settings;
+  final OpenVikingProvider? _openViking;
+
+  /// 内置 @kelivo/openviking 的稳定 id；助手勾选该 MCP 服务即启用 OV 工具与召回。
+  static const String openVikingServerId = 'kelivo_openviking';
 
   List<McpServerConfig> get servers => List.unmodifiable(_servers);
   McpStatus statusFor(String id) => _status[id] ?? McpStatus.idle;
@@ -300,6 +308,8 @@ class McpProvider extends ChangeNotifier {
     _ensureBuiltinFetchServerPresent();
     // Ensure built-in @kelivo/s3 is present by default
     _ensureBuiltinS3ServerPresent();
+    // Ensure built-in @kelivo/openviking is present by default
+    _ensureBuiltinOpenVikingServerPresent();
     // initialize statuses
     for (final s in _servers) {
       _status[s.id] = McpStatus.idle;
@@ -341,6 +351,21 @@ class McpProvider extends ChangeNotifier {
       id: 'kelivo_s3',
       enabled: false, // Disabled by default, user needs to configure S3 first
       name: '@kelivo/s3',
+      transport: McpTransportType.inmemory,
+      tools: const <McpToolConfig>[], // will refresh on connect
+    );
+    _servers = [..._servers, cfg];
+  }
+
+  void _ensureBuiltinOpenVikingServerPresent() {
+    final exists = _servers.any(
+      (s) => s.name == '@kelivo/openviking' || s.id == openVikingServerId,
+    );
+    if (exists) return;
+    final cfg = McpServerConfig(
+      id: openVikingServerId,
+      enabled: false, // Disabled by default, user toggles it per assistant
+      name: '@kelivo/openviking',
       transport: McpTransportType.inmemory,
       tools: const <McpToolConfig>[], // will refresh on connect
     );
@@ -808,6 +833,23 @@ class McpProvider extends ChangeNotifier {
             () => _settings?.s3Config ?? const S3Config(),
           );
           final transport = KelivoS3InMemoryClientTransport(engine);
+          final client = mcp.McpClient.createClient(clientConfig);
+          await client.connect(transport);
+          _clients[id] = client;
+          _status[id] = McpStatus.connected;
+          _errors.remove(id);
+          notifyListeners();
+          await refreshTools(id);
+          _startHeartbeat(id);
+          return;
+        } else if (server.name == '@kelivo/openviking' ||
+            server.id == openVikingServerId) {
+          final ov = _openViking;
+          if (ov == null) {
+            throw StateError('OpenViking provider unavailable');
+          }
+          final engine = KelivoOpenVikingMcpServerEngine(() => ov);
+          final transport = KelivoOpenVikingInMemoryClientTransport(engine);
           final client = mcp.McpClient.createClient(clientConfig);
           await client.connect(transport);
           _clients[id] = client;

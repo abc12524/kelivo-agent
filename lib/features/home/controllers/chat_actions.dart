@@ -6,6 +6,7 @@ import '../../../core/models/chat_message.dart';
 import '../../../core/models/conversation.dart';
 import '../../../core/models/token_usage.dart';
 import '../../../core/providers/assistant_provider.dart';
+import '../../../core/providers/mcp_provider.dart';
 import '../../../core/providers/openviking_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/api/chat_api_service.dart';
@@ -510,6 +511,7 @@ class ChatActions {
     final ovInjected = await messageGenerationService.persistOpenVikingContext(
       conversationId: conversation.id,
       query: content,
+      enabled: _isOpenVikingMcpEnabled(),
     );
     if (ovInjected != null &&
         chatController.appendPersistedTailMessage(ovInjected)) {
@@ -1554,14 +1556,31 @@ class ChatActions {
     _maybeCaptureOpenVikingConversation(conversationId);
   }
 
+  /// OpenViking 能力开关：由内置 MCP 服务 @kelivo/openviking 决定。
+  /// 需「服务已启用」且「当前助手已勾选该服务」；二者同时满足才算启用（含召回）。
+  bool _isOpenVikingMcpEnabled() {
+    try {
+      final mcp = contextProvider.read<McpProvider>();
+      final active = mcp.servers.any(
+        (s) => s.id == McpProvider.openVikingServerId && s.enabled,
+      );
+      if (!active) return false;
+      final assistant = contextProvider.read<AssistantProvider>().currentAssistant;
+      return assistant?.mcpServerIds.contains(McpProvider.openVikingServerId) ==
+          true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// 对话自动上传：把会话消息增量上传到 OpenViking Session 并提取长期记忆。
-  /// 仅在启用 OpenViking + 自动上传时执行；内部静默吞错。
+  /// 仅在启用 @kelivo/openviking MCP 服务 + 自动上传时执行；内部静默吞错。
   void _maybeCaptureOpenVikingConversation(String conversationId) {
     try {
       final ovProvider = contextProvider.read<OpenVikingProvider>();
-      if (!ovProvider.enabled ||
-          !ovProvider.isConfigured ||
-          !ovProvider.autoCapture) {
+      if (!ovProvider.isConfigured ||
+          !ovProvider.autoCapture ||
+          !_isOpenVikingMcpEnabled()) {
         return;
       }
       final svc = ovProvider.service;

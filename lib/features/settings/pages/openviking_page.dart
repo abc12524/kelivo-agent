@@ -16,6 +16,7 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
   late TextEditingController _urlCtrl;
   late TextEditingController _apiKeyCtrl;
   late TextEditingController _userCtrl;
+  late TextEditingController _peerCtrl;
 
   @override
   void initState() {
@@ -24,6 +25,7 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
     _urlCtrl = TextEditingController(text: ov.url);
     _apiKeyCtrl = TextEditingController(text: ov.apiKey);
     _userCtrl = TextEditingController(text: ov.user);
+    _peerCtrl = TextEditingController(text: ov.peerId);
   }
 
   @override
@@ -31,6 +33,7 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
     _urlCtrl.dispose();
     _apiKeyCtrl.dispose();
     _userCtrl.dispose();
+    _peerCtrl.dispose();
     super.dispose();
   }
 
@@ -51,14 +54,10 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         children: [
-          // Enable switch
+          // Options（是否启用由 MCP 服务 @kelivo/openviking 的开 / 关决定）
           _sectionCard(
             cs,
             children: [
-              _switchRow(cs, '启用 OpenViking', ov.enabled, (v) {
-                ov.setEnabled(v);
-              }),
-              _divider(cs),
               _switchRow(cs, '自动上传对话', ov.autoCapture, (v) {
                 ov.setAutoCapture(v);
               }),
@@ -153,6 +152,30 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+
+          // Peer settings (android mode)
+          _sectionHeader('Peer 设置（android 模式）', cs),
+          _sectionCard(
+            cs,
+            children: [
+              _textFieldRow(
+                cs,
+                label: 'Peer ID（留空=default）',
+                hint: 'default',
+                controller: _peerCtrl,
+                onChanged: (v) => ov.setPeerId(v),
+              ),
+              _divider(cs),
+              _switchRow(cs, '按包名派生 workspace peer', ov.workspacePeer, (v) {
+                ov.setWorkspacePeer(v);
+              }),
+              _divider(cs),
+              _switchRow(cs, '召回跨轮去重', ov.recallDedup, (v) {
+                ov.setRecallDedup(v);
+              }),
+            ],
+          ),
           const SizedBox(height: 24),
 
           // Status
@@ -160,9 +183,7 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
-                ov.enabled
-                    ? '✔️ OpenViking 已配置并启用，对话时自动检索相关记忆'
-                    : '⚠️ OpenViking 已配置但未启用',
+                '✔️ OpenViking 已配置。在助手中启用 MCP 服务 @kelivo/openviking 即可使用记忆工具与自动召回',
                 style: TextStyle(
                   fontSize: 13,
                   color: cs.onSurface.withValues(alpha: 0.6),

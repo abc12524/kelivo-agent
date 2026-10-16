@@ -128,8 +128,12 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => ChatService()),
         ChangeNotifierProvider(create: (_) => McpToolService()),
+        ChangeNotifierProvider(create: (_) => OpenVikingProvider()),
         ChangeNotifierProvider(
-          create: (ctx) => McpProvider(settings: ctx.read<SettingsProvider>()),
+          create: (ctx) => McpProvider(
+            settings: ctx.read<SettingsProvider>(),
+            openViking: ctx.read<OpenVikingProvider>(),
+          ),
         ),
         ChangeNotifierProvider(create: (_) => ToolApprovalService()),
         ChangeNotifierProvider(create: (_) => AskUserInteractionService()),
@@ -147,7 +151,6 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => WorldBookProvider()),
         ChangeNotifierProvider(create: (_) => MemoryProvider()),
-        ChangeNotifierProvider(create: (_) => OpenVikingProvider()),
         ChangeNotifierProvider(create: (_) => BackupReminderProvider()),
         // Desktop hotkeys provider
         ChangeNotifierProvider(create: (_) => HotkeyProvider()),

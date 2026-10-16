@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:http/http.dart' as http;
 
 import '../../models/chat_message.dart';
@@ -7,11 +8,24 @@ class OpenVikingService {
   final String baseUrl;
   final String apiKey;
   final String user;
+
+  /// 显式 peer（非空时优先，对齐 android-agent 的 ovPeerId）。
+  final String explicitPeerId;
+
+  /// 是否按包名派生 ws-* peer（对齐 android-agent 的 ovWorkspacePeer）。
+  final bool workspacePeer;
+
+  /// 应用包名（用于 ws-* 派生）。
+  final String packageName;
+
   final http.Client _client;
   OpenVikingService({
     required this.baseUrl,
     required this.apiKey,
     required this.user,
+    this.explicitPeerId = '',
+    this.workspacePeer = false,
+    this.packageName = '',
     http.Client? client,
   }) : _client = client ?? http.Client();
 
@@ -21,46 +35,142 @@ class OpenVikingService {
   static final Map<String, Set<String>> _capturedIds =
       {}; // conversationId -> 已捕获消息 id
 
+  // 跨轮召回按 URI 去重（对齐 android-agent 的 _RECALL_SEEN）
+  static final Map<String, Set<String>> _recallSeen = {};
+
   static const String _recallMarker = '[自动检索的候选记忆';
-  static const String _peerId =
-      'kelivo'; // 本 agent 的 peer_id（对齐 hermes 插件：assistant 消息才带）
+
+  String? _peerCache;
+
+  /// 解析当前 actor peer：显式 ovPeerId > 按包名派生 ws-* > 回退 default
+  /// （对齐 android-agent / 官方 DSH 插件）。
+  String peerId() {
+    final cached = _peerCache;
+    if (cached != null) return cached;
+    final explicit = explicitPeerId.trim();
+    final String peer;
+    if (explicit.isNotEmpty) {
+      peer = explicit;
+    } else if (workspacePeer && packageName.trim().isNotEmpty) {
+      final digest = crypto.md5.convert(utf8.encode(packageName.trim()));
+      peer = 'ws-${digest.toString().substring(0, 12)}';
+    } else {
+      peer = 'default';
+    }
+    _peerCache = peer;
+    return peer;
+  }
 
   Map<String, String> get _headers => {
     'Authorization': 'Bearer $apiKey',
     'Content-Type': 'application/json',
     'X-OpenViking-Account': 'default',
-    'X-OpenViking-Peer': 'default',
+    'X-OpenViking-Peer': peerId(),
   };
 
   Uri _endpoint(String path) =>
       Uri.parse('${baseUrl.replaceAll(RegExp(r'/\$/'), '')}$path');
 
-  /// 合并 memories / resources / skills 三段检索结果，按 uri 去重并按分数降序。
-  List<OvMemoryHit> _parseHits(Map<String, dynamic> body, int limit) {
-    final result = body['result'] as Map<String, dynamic>?;
-    final segments = <dynamic>[
-      result?['memories'],
-      result?['resources'],
-      result?['skills'],
-    ];
-    final seen = <String>{};
-    final hits = <OvMemoryHit>[];
-    for (final seg in segments) {
-      final list = seg as List<dynamic>?;
-      if (list == null) continue;
-      for (final item in list) {
-        final obj = item as Map<String, dynamic>;
-        final uri = (obj['uri'] as String? ?? '');
-        if (uri.isNotEmpty && !seen.add(uri)) continue;
-        hits.add(
-          OvMemoryHit(
-            uri: uri,
-            score: (obj['score'] as num?)?.toDouble() ?? 0.0,
-            snippet: (obj['abstract'] as String? ?? ''),
-            category: (obj['category'] as String? ?? '') ?? '',
-          ),
+  /// POST JSON 并解析写入类响应（对齐 android-agent 对 content/write 的判定）。
+  Future<_OvWriteResult> _postJson(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    try {
+      final resp = await _client
+          .post(_endpoint(path), headers: _headers, body: jsonEncode(body))
+          .timeout(const Duration(seconds: 15));
+      if (resp.statusCode != 200) {
+        return _OvWriteResult(
+          ok: false,
+          statusCode: resp.statusCode,
+          errorCode: '',
+          error: 'HTTP ${resp.statusCode}',
         );
       }
+      var errCode = '';
+      var ok = true;
+      var error = '';
+      try {
+        final b = jsonDecode(resp.body) as Map<String, dynamic>;
+        final err = b['error'];
+        if (err is Map) {
+          errCode = (err['code'] ?? '').toString();
+        } else if (err is String) {
+          errCode = err;
+        }
+        final status = b['status'];
+        ok = errCode.isEmpty && (status == null || status == 'ok');
+        if (errCode.isNotEmpty) {
+          error = errCode;
+        } else if (!ok) {
+          error = '$status';
+        }
+      } catch (_) {
+        ok = true;
+      }
+      return _OvWriteResult(
+        ok: ok,
+        statusCode: resp.statusCode,
+        errorCode: errCode,
+        error: error,
+      );
+    } catch (e) {
+      return _OvWriteResult(
+        ok: false,
+        statusCode: 0,
+        errorCode: '',
+        error: '$e',
+      );
+    }
+  }
+
+  /// 合并 memories / resources / skills 三段检索结果，按 uri 去重并按分数降序。
+  /// 兼容多种后端结构（result 直接列表 / 顶层 memories / hits 等），对齐 android-agent。
+  List<OvMemoryHit> _parseHits(Map<String, dynamic> body, int limit) {
+    final raw = <dynamic>[];
+    final result = body['result'];
+    if (result is Map) {
+      for (final key in const ['memories', 'resources', 'skills']) {
+        final seg = result[key];
+        if (seg is List) raw.addAll(seg);
+      }
+      if (raw.isEmpty) {
+        for (final key in const ['hits', 'items', 'results', 'memories']) {
+          final seg = result[key];
+          if (seg is List) {
+            raw.addAll(seg);
+            break;
+          }
+        }
+      }
+    } else if (result is List) {
+      raw.addAll(result);
+    } else {
+      for (final key in const ['memories', 'hits', 'items', 'results']) {
+        final seg = body[key];
+        if (seg is List) {
+          raw.addAll(seg);
+          break;
+        }
+      }
+    }
+
+    final seen = <String>{};
+    final hits = <OvMemoryHit>[];
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final obj = item.cast<String, dynamic>();
+      final uri = (obj['uri'] as String? ?? '');
+      if (uri.isNotEmpty && !seen.add(uri)) continue;
+      hits.add(
+        OvMemoryHit(
+          uri: uri,
+          score: (obj['score'] as num?)?.toDouble() ?? 0.0,
+          snippet: (obj['abstract'] as String? ?? ''),
+          category: (obj['category'] as String? ?? '') ?? '',
+        ),
+      );
     }
     if (hits.isEmpty) return const [];
     hits.sort((a, b) => b.score.compareTo(a.score));
@@ -137,10 +247,14 @@ class OpenVikingService {
     );
   }
 
+  /// 加载相关记忆作为上下文（带跨轮按 URI 去重）；自动注入走 find 接口（纯向量低延迟）。
+  /// [sessionId] 非空且 [dedup] 为 true 时，同一会话已注入过的 URI 不再重复注入。
   Future<String> loadContext(
     String query, {
     double scoreThreshold = 0.4,
     int displayCount = 3,
+    String sessionId = '',
+    bool dedup = true,
   }) async {
     if (displayCount <= 0 || baseUrl.isEmpty) return '';
     final result = await find(
@@ -149,12 +263,166 @@ class OpenVikingService {
       limit: displayCount,
     );
     if (result.hits.isEmpty) return '';
-    return result.hits
+
+    var hits = result.hits;
+    if (sessionId.isNotEmpty && dedup) {
+      final seen = _recallSeen.putIfAbsent(sessionId, () => <String>{});
+      hits = hits.where((h) => h.uri.isEmpty || seen.add(h.uri)).toList();
+      if (seen.length > 500) {
+        _recallSeen[sessionId] = seen.toList().sublist(seen.length - 500).toSet();
+      }
+    }
+    if (hits.isEmpty) return '';
+    return hits
         .map((h) {
           final scoreStr = h.score > 0 ? '(${h.score.toStringAsFixed(2)})' : '';
           return '> 📚 [${h.uri}] $scoreStr\n  ${h.snippet}';
         })
         .join('\n');
+  }
+
+  // ========== 保存记忆（对齐 android-agent：replace 失败 404/NOT_FOUND 时重试 create） ==========
+
+  /// 保存记忆到 `viking://user/<user>/peers/<peer>/memories/<category>/<name>.md`。
+  Future<String> remember(
+    String category,
+    String name,
+    String content,
+  ) async {
+    if (baseUrl.isEmpty) return '{"error": "OpenViking 未配置"}';
+    final cat = category.trim().isEmpty ? 'entities' : category.trim();
+    final nm = name.trim().isEmpty ? 'untitled' : name.trim();
+    final uri = 'viking://user/$user/peers/${peerId()}/memories/$cat/$nm.md';
+
+    final replace = await _postJson('/api/v1/content/write', {
+      'uri': uri,
+      'content': content,
+      'mode': 'replace',
+      'wait': true,
+    });
+    if (replace.ok) {
+      final err = replace.errorCode;
+      if (err.contains('NOT_FOUND', caseSensitive: false)) {
+        return _createMemory(uri, content);
+      }
+      if (err.isNotEmpty) return '{"error": "$err"}';
+      return '{"success": true, "uri": "$uri"}';
+    }
+    if (replace.statusCode == 404 ||
+        replace.error.contains('NOT_FOUND', caseSensitive: false)) {
+      return _createMemory(uri, content);
+    }
+    return '{"error": "${replace.error}"}';
+  }
+
+  Future<String> _createMemory(String uri, String content) async {
+    final retry = await _postJson('/api/v1/content/write', {
+      'uri': uri,
+      'content': content,
+      'mode': 'create',
+      'wait': false,
+    });
+    if (retry.ok || retry.statusCode == 200) {
+      return '{"success": true, "uri": "$uri"}';
+    }
+    return '{"error": "${retry.error}"}';
+  }
+
+  // ========== 读取文件 ==========
+
+  /// 读取单个 URI 的内容，返回原始文本或错误信封。
+  Future<String> readFile(String uri) async {
+    final target = uri.trim();
+    if (baseUrl.isEmpty || target.isEmpty) {
+      return '{"error": "uri 不能为空"}';
+    }
+    try {
+      final resp = await _client
+          .get(
+            _endpoint('/api/v1/content/read?uri=${Uri.encodeComponent(target)}'),
+            headers: _headers,
+          )
+          .timeout(const Duration(seconds: 15));
+      if (resp.statusCode != 200) {
+        return '{"error": "HTTP ${resp.statusCode}"}';
+      }
+      try {
+        final body = jsonDecode(resp.body) as Map<String, dynamic>;
+        return (body['content'] as String?) ?? resp.body;
+      } catch (_) {
+        return resp.body;
+      }
+    } catch (e) {
+      return '{"error": "$e"}';
+    }
+  }
+
+  /// 批量读取多个 URI，返回 `{"success":true,"count":N,"results":[...]}`。
+  Future<String> readFiles(List<String> uris) async {
+    if (uris.isEmpty) return '{"error": "uris 列表为空"}';
+    final results = <Map<String, dynamic>>[];
+    for (final uri in uris) {
+      final out = await readFile(uri);
+      final isErr = out.startsWith('{"error"');
+      results.add({
+        'uri': uri,
+        'success': !isErr,
+        if (isErr) 'error': out else 'content': out,
+      });
+    }
+    return jsonEncode({
+      'success': true,
+      'count': results.length,
+      'results': results,
+    });
+  }
+
+  // ========== 列出目录 ==========
+
+  Future<String> listDir(String uri, {bool recursive = false}) async {
+    final target = uri.trim();
+    if (baseUrl.isEmpty || target.isEmpty) {
+      return '{"error": "uri 不能为空"}';
+    }
+    try {
+      final suffix = recursive ? '&recursive=true' : '';
+      final resp = await _client
+          .get(
+            _endpoint('/api/v1/fs/tree?uri=${Uri.encodeComponent(target)}$suffix'),
+            headers: _headers,
+          )
+          .timeout(const Duration(seconds: 15));
+      if (resp.statusCode != 200) {
+        return '{"error": "HTTP ${resp.statusCode}"}';
+      }
+      return resp.body;
+    } catch (e) {
+      return '{"error": "$e"}';
+    }
+  }
+
+  // ========== 写入文件 ==========
+
+  Future<String> writeFile(
+    String uri,
+    String content, {
+    String mode = 'replace',
+  }) async {
+    final target = uri.trim();
+    if (baseUrl.isEmpty || target.isEmpty) {
+      return '{"error": "uri 不能为空"}';
+    }
+    final m = mode.trim().isEmpty ? 'replace' : mode.trim();
+    final resp = await _postJson('/api/v1/content/write', {
+      'uri': target,
+      'content': content,
+      'mode': m,
+      'wait': m != 'create',
+    });
+    if (resp.ok) {
+      return '{"success": true, "uri": "$target", "mode": "$m"}';
+    }
+    return '{"error": "${resp.error}"}';
   }
 
   // ========== 删除（遗忘）记忆文件/目录 ==========
@@ -286,10 +554,10 @@ class OpenVikingService {
         final parts = <Map<String, dynamic>>[];
         if (textCaptured) parts.add({'type': 'text', 'text': c});
         parts.addAll(tools);
-        out.add({'role': 'assistant', 'parts': parts, 'peer_id': _peerId});
+        out.add({'role': 'assistant', 'parts': parts, 'peer_id': peerId()});
       } else {
         if (!textCaptured) continue;
-        out.add({'role': 'assistant', 'content': c, 'peer_id': _peerId});
+        out.add({'role': 'assistant', 'content': c, 'peer_id': peerId()});
       }
     }
     return out;
@@ -342,6 +610,19 @@ class OpenVikingService {
     ).allMatches(t).length;
     return cjk >= 4 || alnum >= 6 || t.length >= 12;
   }
+}
+
+class _OvWriteResult {
+  final bool ok;
+  final int statusCode;
+  final String errorCode;
+  final String error;
+  const _OvWriteResult({
+    required this.ok,
+    required this.statusCode,
+    required this.errorCode,
+    required this.error,
+  });
 }
 
 class OvMemoryHit {

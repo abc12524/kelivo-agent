@@ -19,6 +19,7 @@ import 'ask_user_interaction_service.dart';
 import 'message_builder_service.dart';
 import 'tool_approval_service.dart';
 import '../../../core/providers/openviking_provider.dart';
+import '../../../core/services/tools/skill_tool.dart';
 
 /// Callback types for UI updates from MessageGenerationService
 typedef OnMessagesChanged = void Function();
@@ -166,8 +167,12 @@ class MessageGenerationService {
     // Signal processing finished
     onFileProcessingFinished?.call();
 
+    // 刷新已注册 skill 缓存（Android）：供动态注入系统提示与工具描述使用。
+    await SkillTool.instance.ensureScanned();
+
     // Inject prompts
     messageBuilderService.injectSystemPrompt(apiMessages, assistant, modelId);
+    messageBuilderService.injectSkillHint(apiMessages);
     await messageBuilderService.injectMemoryAndRecentChats(
       apiMessages,
       assistant,
@@ -251,8 +256,10 @@ class MessageGenerationService {
   Future<ChatMessage?> persistOpenVikingContext({
     required String conversationId,
     required String query,
+    bool enabled = false,
   }) async {
     try {
+      if (!enabled) return null;
       final ovProvider = contextProvider.read<OpenVikingProvider>();
       if (!ovProvider.isConfigured || ovProvider.displayCount <= 0) return null;
       final userText = query.trim();
@@ -261,6 +268,8 @@ class MessageGenerationService {
         userText,
         scoreThreshold: ovProvider.findThreshold,
         displayCount: ovProvider.findLimit,
+        sessionId: conversationId,
+        dedup: ovProvider.recallDedup,
       );
       if (ovCtx.isEmpty) return null;
       final content = MessageBuilderService.buildOpenVikingInjectionContent(
