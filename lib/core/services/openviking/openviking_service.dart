@@ -302,14 +302,14 @@ class OpenVikingService {
     });
     if (replace.ok) {
       final err = replace.errorCode;
-      if (err.contains('NOT_FOUND', caseSensitive: false)) {
+      if (err.toUpperCase().contains('NOT_FOUND')) {
         return _createMemory(uri, content);
       }
       if (err.isNotEmpty) return '{"error": "$err"}';
       return '{"success": true, "uri": "$uri"}';
     }
     if (replace.statusCode == 404 ||
-        replace.error.contains('NOT_FOUND', caseSensitive: false)) {
+        replace.error.toUpperCase().contains('NOT_FOUND')) {
       return _createMemory(uri, content);
     }
     return '{"error": "${replace.error}"}';

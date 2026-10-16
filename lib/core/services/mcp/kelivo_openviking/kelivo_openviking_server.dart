@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:mcp_client/mcp_client.dart' as mcp;
 
-import '../../providers/openviking_provider.dart';
+import '../../../providers/openviking_provider.dart';
 
 /// @kelivo/openviking — In-memory MCP server engine for OpenViking memory.
 ///
