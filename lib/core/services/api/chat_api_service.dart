@@ -563,12 +563,18 @@ class ChatApiService {
     Map<String, dynamic>? extraBody,
     bool stream = true,
     String? requestId,
+    String? conversationId,
     bool allowImagesApiRouting = true,
     bool ocrActive = false,
   }) async* {
     final kind = ProviderConfig.classify(
       config.id,
       explicitType: config.providerType,
+    );
+    final sessionHeaders = providerSessionHeaders(
+      config,
+      conversationId: conversationId,
+      extraHeaders: extraHeaders,
     );
     final cancelToken = CancelToken();
     final rid = (requestId ?? '').trim();
@@ -605,7 +611,7 @@ class ChatApiService {
             modelId,
             safeMessages,
             userImagePaths: safeUserImagePaths,
-            extraHeaders: extraHeaders,
+            extraHeaders: sessionHeaders,
             extraBody: extraBody,
           );
         } else if (config.useResponseApi == true) {
@@ -621,7 +627,7 @@ class ChatApiService {
             maxTokens: maxTokens,
             tools: tools,
             onToolCall: onToolCall,
-            extraHeaders: extraHeaders,
+            extraHeaders: sessionHeaders,
             extraBody: extraBody,
             stream: stream,
           );
@@ -638,7 +644,7 @@ class ChatApiService {
             maxTokens: maxTokens,
             tools: tools,
             onToolCall: onToolCall,
-            extraHeaders: extraHeaders,
+            extraHeaders: sessionHeaders,
             extraBody: extraBody,
             stream: stream,
           );
@@ -656,7 +662,7 @@ class ChatApiService {
           maxTokens: maxTokens,
           tools: tools,
           onToolCall: onToolCall,
-          extraHeaders: extraHeaders,
+          extraHeaders: sessionHeaders,
           extraBody: extraBody,
           stream: stream,
         );
@@ -677,7 +683,7 @@ class ChatApiService {
             maxTokens: maxTokens,
             tools: tools,
             onToolCall: onToolCall,
-            extraHeaders: extraHeaders,
+            extraHeaders: sessionHeaders,
             extraBody: extraBody,
             stream: stream,
           );
@@ -694,7 +700,7 @@ class ChatApiService {
             maxTokens: maxTokens,
             tools: tools,
             onToolCall: onToolCall,
-            extraHeaders: extraHeaders,
+            extraHeaders: sessionHeaders,
             extraBody: extraBody,
             stream: stream,
           );
@@ -711,7 +717,7 @@ class ChatApiService {
             maxTokens: maxTokens,
             tools: tools,
             onToolCall: onToolCall,
-            extraHeaders: extraHeaders,
+            extraHeaders: sessionHeaders,
             extraBody: extraBody,
             stream: stream,
           );
@@ -733,6 +739,7 @@ class ChatApiService {
     required ProviderConfig config,
     required String modelId,
     required String prompt,
+    String? conversationId,
     Map<String, String>? extraHeaders,
     Map<String, dynamic>? extraBody,
     int? thinkingBudget,
@@ -740,6 +747,11 @@ class ChatApiService {
     final kind = ProviderConfig.classify(
       config.id,
       explicitType: config.providerType,
+    );
+    final sessionHeaders = providerSessionHeaders(
+      config,
+      conversationId: conversationId,
+      extraHeaders: extraHeaders,
     );
     final client = _clientFor(config, CancelToken());
     final upstreamModelId = _apiModelId(config, modelId);
@@ -862,8 +874,8 @@ class ChatApiService {
           'Content-Type': 'application/json',
         };
         headers.addAll(_customHeaders(config, modelId));
-        if (extraHeaders != null && extraHeaders.isNotEmpty) {
-          headers.addAll(extraHeaders);
+        if (sessionHeaders != null && sessionHeaders.isNotEmpty) {
+          headers.addAll(sessionHeaders);
         }
         final extra = _customBody(config, modelId);
         if (extra.isNotEmpty) body.addAll(extra);
@@ -991,8 +1003,8 @@ class ChatApiService {
           'Content-Type': 'application/json',
         };
         headers.addAll(_customHeaders(config, modelId));
-        if (extraHeaders != null && extraHeaders.isNotEmpty) {
-          headers.addAll(extraHeaders);
+        if (sessionHeaders != null && sessionHeaders.isNotEmpty) {
+          headers.addAll(sessionHeaders);
         }
         final extra = _customBody(config, modelId);
         if (extra.isNotEmpty) body.addAll(extra);
@@ -1039,7 +1051,7 @@ class ChatApiService {
             messages: [
               {'role': 'user', 'content': prompt},
             ],
-            extraHeaders: extraHeaders,
+            extraHeaders: sessionHeaders,
             extraBody: extraBody,
             thinkingBudget: thinkingBudget,
             stream: false,
@@ -1108,8 +1120,8 @@ class ChatApiService {
           if (proj.isNotEmpty) headers['X-Goog-User-Project'] = proj;
         }
         headers.addAll(_customHeaders(config, modelId));
-        if (extraHeaders != null && extraHeaders.isNotEmpty) {
-          headers.addAll(extraHeaders);
+        if (sessionHeaders != null && sessionHeaders.isNotEmpty) {
+          headers.addAll(sessionHeaders);
         }
         final extra = _customBody(config, modelId);
         if (extra.isNotEmpty) body.addAll(extra);

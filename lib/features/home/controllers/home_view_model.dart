@@ -983,6 +983,7 @@ class HomeViewModel extends ChangeNotifier {
         config: cfg,
         modelId: mdlId,
         prompt: prompt,
+        conversationId: convo.id,
       )).trim();
 
       if (summary.isEmpty) return 'empty_summary';
@@ -1241,6 +1242,7 @@ class HomeViewModel extends ChangeNotifier {
         modelId: mdlId,
         prompt: prompt,
         thinkingBudget: budget,
+        conversationId: convo.id,
       )).trim();
       if (title.isNotEmpty) {
         await _chatService.renameConversation(convo.id, title);
@@ -1359,6 +1361,7 @@ class HomeViewModel extends ChangeNotifier {
         modelId: mdlId,
         prompt: prompt,
         thinkingBudget: budget,
+        conversationId: convo.id,
       )).trim();
 
       if (summary.isNotEmpty) {
@@ -1425,6 +1428,7 @@ class HomeViewModel extends ChangeNotifier {
     try {
       await _chatService.clearConversationSuggestions(conversationId);
       final suggestions = await _suggestionService.generate(
+        conversationId: conversationId,
         settings: settings,
         providerKey: provKey,
         modelId: mdlId,

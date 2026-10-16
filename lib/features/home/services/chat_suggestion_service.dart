@@ -70,6 +70,7 @@ class ChatSuggestionService {
   }
 
   Future<List<String>> generate({
+    String? conversationId,
     required SettingsProvider settings,
     required String providerKey,
     required String modelId,
@@ -88,6 +89,7 @@ class ChatSuggestionService {
       modelId: modelId,
       prompt: prompt,
       thinkingBudget: thinkingBudget,
+      conversationId: conversationId,
     );
     return parseSuggestions(raw);
   }

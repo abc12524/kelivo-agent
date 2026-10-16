@@ -682,6 +682,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
         modelId: mdlId,
         prompt: prompt,
         thinkingBudget: budget,
+        conversationId: conversationId,
       )).trim();
       if (title.isNotEmpty) {
         await chatService.renameConversation(conversationId, title);

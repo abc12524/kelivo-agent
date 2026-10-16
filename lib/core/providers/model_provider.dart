@@ -445,6 +445,7 @@ class ProviderManager {
         final headers = <String, String>{
           'Authorization': 'Bearer $apiKey',
           'Content-Type': 'application/json',
+          ...?providerSessionHeaders(cfg),
         };
         headers.addAll(_customHeaders(cfg, modelId));
         final res = await client.post(

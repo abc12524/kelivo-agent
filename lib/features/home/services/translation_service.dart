@@ -115,6 +115,7 @@ class TranslationService {
       final translationStream = ChatApiService.sendMessageStream(
         config: provider,
         modelId: translateModelId,
+        conversationId: message.conversationId,
         messages: [
           {'role': 'user', 'content': prompt},
         ],
