@@ -7,7 +7,7 @@
 > 以 `_` 开头的文件（如 `_skill_runner.py`、`_envelope.py`）是运行时内部文件，不会被注册。
 
 `skill` 工具只负责**调用**已注册的 skill（以及 `delete` 注销），不再负责创建脚本。
-新增 skill 的方式是把脚本文件写进本目录（例如用 `system_tool` 的 `python` 动作写文件）。
+新增 skill 的方式是把脚本文件写进本目录，**推荐用 `script` skill 写入**。
 
 ## 目录与运行环境
 
@@ -28,6 +28,11 @@
 #   arguments.path = 要统计的目录（默认 "/"）
 #   示例: {"path": "/data"}
 ```
+
+> **头部解析规则**（`_skill_runner.py` 的 `_parse_header()`）：头部块只认 `skill` / `description` /
+> `status` / `usage` 四个键。`# usage:` **之后**的 `#` 行会**整段**拼进用法文本（含空行、含
+> “注意/提示/约定”这类无键名的行）；而 `# usage:` **之前**的其他注释行会被静默丢弃。
+> 所以补充说明（注意事项、提示、约定）**必须写在 `# usage:` 之后**，否则不会出现在 `skill` 的用法里。
 
 ### 2. `run(arguments)` 函数
 
@@ -85,6 +90,9 @@ def run(arguments):
 
 ## 约定与建议
 
+- **改代码首选 `script`**：新增或修改本目录（或任何）代码/脚本文件时，优先用 `script` skill：
+  `read`/`outline` 看清结构 → `edit`/`add`/`delete` 精确改动（唯一匹配校验 + unified diff），
+  `dry_run=true` 先预览 diff 再落盘；**不要**用 `sed`、`python` 的 `str.replace` 手搓。
 - **返回值即工具结果**：LLM 只看到 `run` 的返回值，尽量返回结构化 dict。
 - **错误用信封**：失败返回 `error("原因", code="...")`，便于 LLM 自纠。
 - **错误码**：`invalid_argument` / `not_found` / `unknown_skill` / `io_error` / `internal` 等。
