@@ -16,8 +16,9 @@ class ModelRegistry {
   // Updated model groups to reflect new series
   // Vision-capable models (text + image input)
   static final RegExp vision = RegExp(
-    // GPT family incl. 4o, 4.1, 5 (exclude gpt-5-chat), and OpenAI o* series
-    r'(gpt-4o|gpt-4\.1|gpt-5(?!-chat)|o\d|gemini|claude|qwen-?3([-.])5|kimi-k2([-.])(?:5|6|7)|doubao.+1([-.])(?:6|8)|grok-4|step-3|intern-s1|minimax-m3(?:$|[/_:@])|mimo-v2(?:-omni(?:$|[/_:@])|\.5(?:$|[/_:@]))|sensenova-6\.7-flash-lite)',
+    // Mirrors upstream ModelDefaultsGuesser._vision. Additional vision families
+    // (Kimi Code, Qwen-VL, GLM-V, DeepSeek Flash) come from the helpers below.
+    r'(gpt-4o|gpt-4\.1|gpt-5(?!-chat)|gpt-6|o\d|gemini|claude|kimi-k2([-.])(?:5|6|7)|kimi-k3(?:$|[/_:@.-])|muse-spark-1(?:$|[/_:@.-])|doubao.+(?:1([-.])(?:6|8)|seed-2|seed-evolving)|grok-4|step-3|intern-s1|minimax-m3(?:$|[/_:@])|mimo-v2(?:-omni(?:$|[/_:@])|\.5(?:$|[/_:@])|\.6(?:$|[/_:@.-]))|sensenova-6\.7-flash-lite)',
     caseSensitive: false,
   );
   // Tool-using models
@@ -63,6 +64,58 @@ class ModelRegistry {
     ).hasMatch(id);
   }
 
+  static bool _matches(String id, String pattern) =>
+      RegExp(pattern, caseSensitive: false).hasMatch(id);
+
+  // Kimi Code family (upstream `_isKimiCode`) accepts image input.
+  static bool _isKimiCodeK3Alias(String id) {
+    final normalized = id.trim().toLowerCase();
+    return normalized == 'k3' || normalized == 'k3-256k';
+  }
+
+  static bool _isKimiK28(String id) =>
+      _matches(id, r'(^|[/_:@])kimi-k2\.8(?:$|[-.:])');
+
+  static bool _isKimiForCoding(String id) =>
+      _matches(id, r'(^|[/_:@])kimi-for-coding(?:-highspeed)?(?:$|[:])');
+
+  static bool _isKimiCode(String id) =>
+      _isKimiCodeK3Alias(id) || _isKimiForCoding(id) || _isKimiK28(id);
+
+  // Qwen-VL family (upstream `_isQwenVisionModel`). `qwen3.5` always supports
+  // vision; newer snapshots gained it at the dates encoded here.
+  static bool _isQwenVisionModel(String id) {
+    if (RegExp(r'qwen-?3([-.])5').hasMatch(id)) return true;
+    if (RegExp(r'qwen-?3([-.])7-(?:plus|flash)').hasMatch(id)) return true;
+    if (RegExp(r'qwen-?3([-.])8-(?:max|flash|27b)').hasMatch(id)) return true;
+    final maxSnap = RegExp(
+      r'qwen-?3([-.])7-max-(\d{4}-\d{2}-\d{2})',
+    ).firstMatch(id);
+    if (maxSnap == null) return false;
+    final date = DateTime.tryParse(maxSnap.group(2)!);
+    if (date == null) return false;
+    return !date.isBefore(DateTime(2026, 6, 8));
+  }
+
+  // GLM-V family (upstream `_isGlmVisionModel`).
+  static bool _isGlmVisionModel(String id) =>
+      _matches(id, r'(^|[/_:@])glm-5\.3-flash(?:$|[-.])');
+
+  // DeepSeek Flash (V4.1) is natively multimodal. Upstream matches
+  // `deepseek-flash` / `deepseek-v4-flash`; also accept the `deepseek-v4.1-flash`
+  // id used by some deployments.
+  static bool _isDeepSeekVisionModel(String id) => _matches(
+    id,
+    r'(^|[/_:@])(?:deepseek-flash|deepseek-v4(?:\.1)?-flash)(?:$|[/_:@.-])',
+  );
+
+  static bool _supportsVisionInput(String id) =>
+      vision.hasMatch(id) ||
+      _isKimiCode(id) ||
+      _isQwenVisionModel(id) ||
+      _isGlmVisionModel(id) ||
+      _isDeepSeekVisionModel(id);
+
   static ModelInfo infer(ModelInfo base) {
     final id = base.id.toLowerCase();
     final inMods = <Modality>[...base.input];
@@ -104,7 +157,7 @@ class ModelRegistry {
       }
       return base.copyWith(input: inMods, output: outMods, abilities: ab);
     }
-    if (vision.hasMatch(id)) {
+    if (_supportsVisionInput(id)) {
       if (!inMods.contains(Modality.image)) inMods.add(Modality.image);
     }
     if (tool.hasMatch(id) && !ab.contains(ModelAbility.tool)) {
