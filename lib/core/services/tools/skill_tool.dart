@@ -26,9 +26,11 @@ class SkillMeta {
 
 /// 工具族：skill —— 调用已注册的自建 Python 工具（不负责创建）。
 ///
-/// 复刻 android-agent 的 skill 机制：`skills/` 目录下的 `*.py` 脚本按头部元信息
-/// （`# skill` / `# description` / `# status` / `# usage`）自动注册；新增脚本自动出现，
-/// 删除脚本自动消失，`_` 开头的运行时文件不参与注册。与内置工具族一样按「两段式」披露：
+/// 复刻 android-agent 的 skill 机制：`skills/` 目录下的脚本按头部元信息
+/// （`# skill` / `# description` / `# status` / `# usage`）自动注册，支持两种布局
+/// （可混用）：扁平 `skills/<名>.py`；文件夹 `skills/<名>/skill.py`（入口、`_` 助手、
+/// `config.json` 同目录）。新增即生效、删除即注销，`_`/`.` 开头不参与注册。
+/// 与内置工具族一样按「两段式」披露：
 ///
 ///   - 不传 action                    → 返回已注册 skill 清单（名称 + 简短说明）；
 ///   - action = <skill 名>             → 返回该 skill 的用法；
@@ -98,27 +100,36 @@ class SkillTool extends ToolFamily {
   Future<void> ensureScanned() async {
     final dir = await _skillsDir();
     await _deployAssets(dir);
-    final files =
-        dir
-            .listSync()
-            .whereType<File>()
-            .where(
-              (f) =>
-                  f.path.endsWith('.py') &&
-                  !f.uri.pathSegments.last.startsWith('_'),
-            )
-            .toList()
-          ..sort((a, b) => a.path.compareTo(b.path));
 
-    final signature = files
+    // 两种布局：扁平 skills/<名>.py；文件夹 skills/<名>/skill.py（入口）
+    final entries = <File>[];
+    final children = dir.listSync()
+      ..sort((a, b) => a.path.compareTo(b.path));
+    for (final e in children) {
+      final seg = e.uri.pathSegments.last;
+      if (seg.startsWith('_') || seg.startsWith('.')) continue;
+      if (e is File && seg.endsWith('.py')) {
+        entries.add(e);
+      } else if (e is Directory) {
+        final entry = File('${e.path}/skill.py');
+        if (entry.existsSync()) entries.add(entry);
+      }
+    }
+
+    final signature = entries
         .map(
           (f) =>
-              '${f.uri.pathSegments.last}:${f.lastModifiedSync().millisecondsSinceEpoch}:${f.lengthSync()}',
+              '${f.path}:${f.lastModifiedSync().millisecondsSinceEpoch}:${f.lengthSync()}',
         )
         .join(';');
     if (signature == _cachedSignature) return;
-    _cache = files.map(_parseHeader).whereType<SkillMeta>().toList();
+    _cache = entries.map(_parseHeader).whereType<SkillMeta>().toList();
     _cachedSignature = signature;
+  }
+
+  /// 使扫描缓存失效，下一次 [ensureScanned] 强制重扫（安装/删除 skill 后调用）。
+  void invalidate() {
+    _cachedSignature = '';
   }
 
   Future<Directory> _skillsDir() async {
@@ -204,17 +215,21 @@ class SkillTool extends ToolFamily {
     if (dir == null || !_nameRe.hasMatch(skill)) {
       return jsonEncode({'status': 'error', 'error': '非法 skill 名称'});
     }
-    final target = File('${dir.path}/$skill.py');
-    if (!target.existsSync()) {
-      return jsonEncode({'status': 'error', 'error': "skill '$skill' 不存在"});
-    }
+    final flat = File('${dir.path}/$skill.py');
+    final folder = Directory('${dir.path}/$skill');
     try {
-      target.deleteSync();
+      if (flat.existsSync()) {
+        flat.deleteSync();
+      } else if (folder.existsSync()) {
+        folder.deleteSync(recursive: true);
+      } else {
+        return jsonEncode({'status': 'error', 'error': "skill '$skill' 不存在"});
+      }
     } catch (e) {
       return jsonEncode({'status': 'error', 'error': '删除失败: $e'});
     }
     // 删除后立即失效缓存，便于下一轮刷新
-    _cachedSignature = '';
+    invalidate();
     return jsonEncode({
       'status': 'ok',
       'result': {'skill': skill, 'deleted': true},

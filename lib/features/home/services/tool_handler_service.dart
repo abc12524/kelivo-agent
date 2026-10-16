@@ -17,6 +17,7 @@ import 'ask_user_interaction_service.dart';
 import '../../../core/services/device_tools_service.dart';
 import '../../../core/services/tools/system_tool.dart';
 import '../../../core/services/tools/phone_tool.dart';
+import '../../../core/services/tools/skill_hub_tool.dart';
 import '../../../core/services/tools/skill_tool.dart';
 import '../../../core/services/tools/tool_family.dart';
 import 'local_tools_service.dart';
@@ -228,6 +229,7 @@ class ToolHandlerService {
       defs.add(_familyDefinition(SystemTool.instance));
       defs.add(_familyDefinition(PhoneTool.instance));
       defs.add(_familyDefinition(SkillTool.instance));
+      defs.add(_familyDefinition(SkillHubTool.instance));
     }
     return defs;
   }
@@ -434,6 +436,9 @@ class ToolHandlerService {
         }
         if (name == SkillTool.instance.name) {
           return await SkillTool.instance.execute(args);
+        }
+        if (name == SkillHubTool.instance.name) {
+          return await SkillHubTool.instance.execute(args);
         }
 
         // Ask-user interaction tool — must run before the device-tool

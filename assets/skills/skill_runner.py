@@ -2,10 +2,14 @@
 # -*- coding: utf-8 -*-
 """android-agent skill runner —— 已注册 skill 的调用入口（不负责创建）。
 
-扫描本目录下的 skill 脚本（``*.py``，跳过以 ``_`` 开头的文件）按脚本头部自动注册；
+扫描本目录下的 skill 脚本自动注册，支持两种布局（可混用）：
+
+    扁平:   skills/<名称>.py            （模块名 <名称>）
+    文件夹: skills/<名称>/skill.py      （入口、助手、配置同目录；相对导入可用）
+
 脚本定义 ``run(arguments) -> (str | dict)``，返回统一信封
 ``{"status": "ok", "result": {...}}`` / ``{"status": "error", ...}``。
-脚本的编写规范见同目录 README.md。
+``_`` 开头的文件/目录不参与注册。脚本的编写规范见同目录 README.md。
 
 本文件由 Kotlin 侧 SkillTool 调用，每次调用都是一个全新进程：
 
@@ -24,8 +28,10 @@ import io
 import json
 import os
 import re
+import shutil
 import sys
 import traceback
+import types
 
 SKILL_DIR = os.path.dirname(os.path.abspath(__file__))
 if SKILL_DIR not in sys.path:
@@ -121,16 +127,34 @@ def _parse_header(path):
     }
 
 
-def scan():
-    """扫描 SKILL_DIR，返回 name -> meta。"""
-    registry = {}
+def _iter_entries():
+    """枚举 skill 入口文件，产出 (entry_path, folder)。
+
+    - 扁平:  skill/<名>.py         → (path, None)
+    - 文件夹: skill/<名>/skill.py   → (path, <folder>)（入口、助手、配置同目录）
+    `_` / `.` 开头的文件或目录一律跳过。
+    """
     if not os.path.isdir(SKILL_DIR):
-        return registry
+        return
     for fn in sorted(os.listdir(SKILL_DIR)):
-        if not fn.endswith(".py") or fn.startswith("_"):
+        if fn.startswith("_") or fn.startswith("."):
             continue
-        meta = _parse_header(os.path.join(SKILL_DIR, fn))
+        full = os.path.join(SKILL_DIR, fn)
+        if os.path.isfile(full) and fn.endswith(".py"):
+            yield full, None
+        elif os.path.isdir(full):
+            entry = os.path.join(full, "skill.py")
+            if os.path.isfile(entry):
+                yield entry, full
+
+
+def scan():
+    """扫描 SKILL_DIR（扁平 + 文件夹），返回 name -> meta。"""
+    registry = {}
+    for entry, folder in _iter_entries():
+        meta = _parse_header(entry)
         if meta:
+            meta["folder"] = folder
             registry[meta["name"]] = meta
     return registry
 
@@ -165,6 +189,24 @@ def act_usage(skill):
     })
 
 
+def _load_module(meta):
+    """按布局加载入口模块：文件夹式以包上下文加载，使相对导入（from ._x import）可用。"""
+    folder = meta.get("folder")
+    if folder:
+        pkg = "_skillpkg_" + os.path.basename(folder)
+        if pkg not in sys.modules:
+            pkg_mod = types.ModuleType(pkg)
+            pkg_mod.__path__ = [folder]
+            sys.modules[pkg] = pkg_mod
+        spec = importlib.util.spec_from_file_location(pkg + ".skill", meta["path"])
+    else:
+        spec = importlib.util.spec_from_file_location("_skill_" + meta["module"], meta["path"])
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def act_run(skill, arguments):
     meta = REGISTRY.get(skill)
     if not meta:
@@ -173,9 +215,7 @@ def act_run(skill, arguments):
             code="unknown_skill",
         )
     try:
-        spec = importlib.util.spec_from_file_location("_skill_" + meta["module"], meta["path"])
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        module = _load_module(meta)
     except Exception as e:
         return error("加载 skill 模块失败 - %s" % e, code="internal")
     run = getattr(module, "run", None)
@@ -223,11 +263,15 @@ def act_delete(skill):
     name = (skill or "").strip()
     if not _NAME_RE.match(name):
         return error("非法 skill 名称", code="invalid_name")
-    path = os.path.join(SKILL_DIR, name + ".py")
-    if not os.path.isfile(path):
-        return error("skill '%s' 不存在" % name, code="not_found")
+    flat = os.path.join(SKILL_DIR, name + ".py")
+    folder = os.path.join(SKILL_DIR, name)
     try:
-        os.remove(path)
+        if os.path.isfile(flat):
+            os.remove(flat)
+        elif os.path.isdir(folder):
+            shutil.rmtree(folder)
+        else:
+            return error("skill '%s' 不存在" % name, code="not_found")
     except OSError as e:
         return error("删除失败 - %s" % e, code="io_error")
     return ok({"skill": name, "deleted": True})
