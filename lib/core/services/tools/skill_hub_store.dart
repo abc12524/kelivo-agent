@@ -20,16 +20,29 @@ class SkillHubStore {
   static String? _baseCache;
   static String? _tokenCache;
 
+  /// 去掉粘贴引入的不可见字符（零宽空格 / BOM / 方向控制符等）并去掉首尾空白。
+  ///
+  /// 这些字符 `String.trim()` 不会处理（它们不是 Unicode 空白），却会被
+  /// `Uri` 编码进 URL —— 例如零宽空格 U+200B 变成 `%E2%80%8B`，令拼出的
+  /// 地址静默变形、请求打到不存在的仓库。读取时也清洗，可自愈历史脏数据。
+  static String _clean(String s) =>
+      s.replaceAll(_invisible, '').trim();
+
+  static final RegExp _invisible = RegExp(
+    r'[\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]',
+  );
+
   static Future<String> getRepo() async {
     if (_repoCache != null) return _repoCache!;
     final prefs = await SharedPreferences.getInstance();
-    final v = prefs.getString(_repoKey);
-    _repoCache = (v == null || v.trim().isEmpty) ? defaultRepo : v.trim();
+    final v = _clean(prefs.getString(_repoKey) ?? '');
+    _repoCache = v.isEmpty ? defaultRepo : v;
     return _repoCache!;
   }
 
   static Future<void> setRepo(String repo) async {
-    _repoCache = repo.trim().isEmpty ? defaultRepo : repo.trim();
+    final v = _clean(repo);
+    _repoCache = v.isEmpty ? defaultRepo : v;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_repoKey, _repoCache!);
   }
@@ -37,13 +50,14 @@ class SkillHubStore {
   static Future<String> getBranch() async {
     if (_branchCache != null) return _branchCache!;
     final prefs = await SharedPreferences.getInstance();
-    final v = prefs.getString(_branchKey);
-    _branchCache = (v == null || v.trim().isEmpty) ? defaultBranch : v.trim();
+    final v = _clean(prefs.getString(_branchKey) ?? '');
+    _branchCache = v.isEmpty ? defaultBranch : v;
     return _branchCache!;
   }
 
   static Future<void> setBranch(String branch) async {
-    _branchCache = branch.trim().isEmpty ? defaultBranch : branch.trim();
+    final v = _clean(branch);
+    _branchCache = v.isEmpty ? defaultBranch : v;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_branchKey, _branchCache!);
   }
@@ -52,12 +66,12 @@ class SkillHubStore {
   static Future<String> getType() async {
     if (_typeCache != null) return _typeCache!;
     final prefs = await SharedPreferences.getInstance();
-    _typeCache = (prefs.getString(_typeKey) ?? '').trim();
+    _typeCache = _clean(prefs.getString(_typeKey) ?? '');
     return _typeCache!;
   }
 
   static Future<void> setType(String type) async {
-    _typeCache = type.trim();
+    _typeCache = _clean(type);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_typeKey, _typeCache!);
   }
@@ -66,12 +80,12 @@ class SkillHubStore {
   static Future<String> getBase() async {
     if (_baseCache != null) return _baseCache!;
     final prefs = await SharedPreferences.getInstance();
-    _baseCache = (prefs.getString(_baseKey) ?? '').trim();
+    _baseCache = _clean(prefs.getString(_baseKey) ?? '');
     return _baseCache!;
   }
 
   static Future<void> setBase(String base) async {
-    _baseCache = base.trim();
+    _baseCache = _clean(base);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_baseKey, _baseCache!);
   }
@@ -80,12 +94,12 @@ class SkillHubStore {
   static Future<String> getToken() async {
     if (_tokenCache != null) return _tokenCache!;
     final prefs = await SharedPreferences.getInstance();
-    _tokenCache = (prefs.getString(_tokenKey) ?? '').trim();
+    _tokenCache = _clean(prefs.getString(_tokenKey) ?? '');
     return _tokenCache!;
   }
 
   static Future<void> setToken(String token) async {
-    _tokenCache = token.trim();
+    _tokenCache = _clean(token);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, _tokenCache!);
   }
