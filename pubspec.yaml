@@ -130,6 +130,11 @@ dev_dependencies:
   flutter_lints: ^5.0.0
 
 dependency_overrides:
+  # shared_preferences_android 2.5+ 改用 JNI（package:jni）调用 Kotlin 类，
+  # R8 混淆后运行期 JNI 查不到方法（NoSuchMethodError: no non-static method
+  # SharedPreferencesApiRegistrar.getAll），导致全部 SharedPreferences 读写失败。
+  # 钉回最后一个纯 Pigeon/无 JNI 的版本 2.4.28。
+  shared_preferences_android: 2.4.28
   # Prevent the location from being accessed continuously on Windows
   permission_handler_windows:
     path: ./dependencies/flutter-permission-handler/permission_handler_windows
