@@ -22,6 +22,9 @@ class _SkillsPageState extends State<SkillsPage> {
 
   final TextEditingController _repoCtrl = TextEditingController();
   final TextEditingController _branchCtrl = TextEditingController();
+  final TextEditingController _typeCtrl = TextEditingController();
+  final TextEditingController _baseCtrl = TextEditingController();
+  final TextEditingController _tokenCtrl = TextEditingController();
   bool _savingCfg = false;
   bool _remoteLoading = false;
   String? _remoteError;
@@ -39,16 +42,25 @@ class _SkillsPageState extends State<SkillsPage> {
   void dispose() {
     _repoCtrl.dispose();
     _branchCtrl.dispose();
+    _typeCtrl.dispose();
+    _baseCtrl.dispose();
+    _tokenCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _loadConfig() async {
     final repo = await SkillHubStore.getRepo();
     final branch = await SkillHubStore.getBranch();
+    final type = await SkillHubStore.getType();
+    final base = await SkillHubStore.getBase();
+    final token = await SkillHubStore.getToken();
     if (!mounted) return;
     setState(() {
       _repoCtrl.text = repo;
       _branchCtrl.text = branch;
+      _typeCtrl.text = type;
+      _baseCtrl.text = base;
+      _tokenCtrl.text = token;
     });
   }
 
@@ -56,6 +68,9 @@ class _SkillsPageState extends State<SkillsPage> {
     setState(() => _savingCfg = true);
     await SkillHubStore.setRepo(_repoCtrl.text);
     await SkillHubStore.setBranch(_branchCtrl.text);
+    await SkillHubStore.setType(_typeCtrl.text);
+    await SkillHubStore.setBase(_baseCtrl.text);
+    await SkillHubStore.setToken(_tokenCtrl.text);
     if (mounted) setState(() => _savingCfg = false);
     _snack('已保存仓库配置');
   }
@@ -234,6 +249,24 @@ class _SkillsPageState extends State<SkillsPage> {
                 _repoField(cs, label: '仓库 (owner/repo)', controller: _repoCtrl),
                 const SizedBox(height: 8),
                 _repoField(cs, label: '分支', controller: _branchCtrl),
+                const SizedBox(height: 8),
+                _repoField(
+                  cs,
+                  label: '类型 (github/gitea，留空自动)',
+                  controller: _typeCtrl,
+                ),
+                const SizedBox(height: 8),
+                _repoField(
+                  cs,
+                  label: 'Gitea 基址 (如 http://192.168.30.181:3000)',
+                  controller: _baseCtrl,
+                ),
+                const SizedBox(height: 8),
+                _repoField(
+                  cs,
+                  label: '访问令牌（私有仓库，可选）',
+                  controller: _tokenCtrl,
+                ),
                 const SizedBox(height: 10),
                 Row(
                   children: [

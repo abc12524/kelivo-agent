@@ -8,14 +8,16 @@ import 'skill_hub_store.dart';
 import 'skill_tool.dart';
 import 'tool_family.dart';
 
-/// 工具族：skill_hub —— 从远程技能仓库（GitHub）查看 / 下载 / 下线或删除 skill。
+/// 工具族：skill_hub —— 从远程技能仓库（GitHub / Gitea）查看 / 下载 / 下线或删除 skill。
 ///
 /// 远程仓库根放 `index.json`（技能名 + 说明 + 平台 + 依赖索引），每个技能一个文件夹
-/// （入口 `skill.py` 与可选 `_` 助手 / `config.example.json` 同目录）。安装时按 GitHub
+/// （入口 `skill.py` 与可选 `_` 助手 / `config.example.json` 同目录）。安装时按仓库
 /// contents API 列出该文件夹文件并逐个下载到本地 `skills/<名>/`，随后由 [SkillTool]
 /// 按签名自动重新扫描注册（无需重启）。
 ///
 /// 仓库地址默认内置 `abc12524/shell-skills@main`，可在「Skill 管理」页修改。
+/// 仓库类型 `github` / `gitea` 由 `skill_hub_type` 指定；留空时若配置了 Gitea 基址
+/// `skill_hub_base`（如 http://192.168.30.181:3000）则按 gitea 处理，否则按 github。
 ///
 /// action 分发（两段式）：
 ///   - 不传 action                  → 子工具清单
@@ -53,7 +55,7 @@ class SkillHubTool extends ToolFamily {
 
   @override
   String get description =>
-      '远程技能仓库（GitHub）。子工具：list / install / remove。'
+      '远程技能仓库（GitHub / Gitea）。子工具：list / install / remove。'
       'list 查看可装技能；install + params{name} 下载安装；'
       'remove + params{name} 默认下线（可恢复），remove + params{name,hard=true} 才删除。'
       '下载即信任其代码（会在进程内执行）。仓库地址可在「Skill 管理」页修改。';
@@ -98,22 +100,49 @@ class SkillHubTool extends ToolFamily {
 
   Future<String> _branch() async => (await SkillHubStore.getBranch()).trim();
 
-  Future<String> _indexUrl() async =>
-      'https://raw.githubusercontent.com/${await _repo()}/${await _branch()}/index.json';
+  Future<String> _base() async {
+    final s = (await SkillHubStore.getBase()).trim();
+    return s.replaceAll(RegExp(r'/+$'), '');
+  }
 
-  Future<String> _contentsUrl(String path) async =>
-      'https://api.github.com/repos/${await _repo()}/contents/$path?ref=${await _branch()}';
+  /// 仓库类型：显式配置优先，其次按是否配置 Gitea 基址推断。
+  Future<String> _type() async {
+    final t = (await SkillHubStore.getType()).trim().toLowerCase();
+    if (t == 'github' || t == 'gitea') return t;
+    return (await _base()).isEmpty ? 'github' : 'gitea';
+  }
+
+  Future<String> _indexUrl() async {
+    if (await _type() == 'gitea') {
+      return '${await _base()}/${await _repo()}/raw/branch/${await _branch()}/index.json';
+    }
+    return 'https://raw.githubusercontent.com/${await _repo()}/${await _branch()}/index.json';
+  }
+
+  Future<String> _contentsUrl(String path) async {
+    if (await _type() == 'gitea') {
+      return '${await _base()}/api/v1/repos/${await _repo()}/contents/$path?ref=${await _branch()}';
+    }
+    return 'https://api.github.com/repos/${await _repo()}/contents/$path?ref=${await _branch()}';
+  }
 
   // ==================== HTTP ====================
 
+  Future<Map<String, String>> _headers() async {
+    final isGitea = await _type() == 'gitea';
+    final headers = <String, String>{
+      'User-Agent': 'kelivo-agent',
+      'Accept': isGitea ? 'application/json' : 'application/vnd.github.v3+json',
+    };
+    final token = (await SkillHubStore.getToken()).trim();
+    if (token.isNotEmpty) {
+      headers['Authorization'] = isGitea ? 'token $token' : 'Bearer $token';
+    }
+    return headers;
+  }
+
   Future<String> _getText(String url) async {
-    final resp = await http.get(
-      Uri.parse(url),
-      headers: {
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'kelivo-agent',
-      },
-    );
+    final resp = await http.get(Uri.parse(url), headers: await _headers());
     if (resp.statusCode != 200) {
       throw Exception('HTTP ${resp.statusCode}');
     }
@@ -121,10 +150,7 @@ class SkillHubTool extends ToolFamily {
   }
 
   Future<List<int>> _getBytes(String url) async {
-    final resp = await http.get(
-      Uri.parse(url),
-      headers: {'User-Agent': 'kelivo-agent'},
-    );
+    final resp = await http.get(Uri.parse(url), headers: await _headers());
     if (resp.statusCode != 200) {
       throw Exception('HTTP ${resp.statusCode}');
     }
@@ -166,6 +192,8 @@ class SkillHubTool extends ToolFamily {
     }
     return jsonEncode({
       'status': 'ok',
+      'type': await _type(),
+      'base': await _base(),
       'repo': await _repo(),
       'branch': await _branch(),
       'count': items.length,
