@@ -120,29 +120,12 @@ dart format <changed-paths>
 
 - Unformatted code must not be committed.
 
-### 3.4 Minimum Sufficient Verification After Completion
+### 3.4 Delivery Notes
 
-- Default minimum verification loop:
-
-```bash
-flutter analyze
-flutter test
-```
-
-- If the change scope is clearly narrow, at minimum run the relevant test subset and explain in the delivery notes why only a subset was run.
-- If the following content types are modified, the corresponding extra action is mandatory:
-
-| Change Type | Required Action |
-| --- | --- |
-| ARB / localization | `flutter gen-l10n`, check `desiredFileName.txt`, then `flutter analyze` |
-| Hive model / generated code | `dart run build_runner build --delete-conflicting-outputs`, then run related tests |
-| `pubspec.yaml` / dependencies | `flutter pub get`, then `flutter analyze` and related tests |
-| `.github/workflows/**` / build scripts | Check ALL similar workflow files, not just one |
-| Platform directories `android/ ios/ macos/ linux/ windows/` | At least one targeted platform verification; if impossible, state why explicitly |
-| `dependencies/**` path dependencies | Run analysis/tests in the dependency's own directory, not just the root repo |
-| `lib/desktop/**`, desktop hotkeys/tray/window logic | At least one desktop-targeted verification (e.g. `flutter run -d macos`, `flutter build macos`, or the corresponding Windows/Linux target); if only the current machine's platform was verified, state the uncovered platform boundary |
-
-- If local environment limitations prevent completing any verification, the final delivery notes must explicitly state "what was not run, why, and where the risk lies".
+- Running `flutter analyze`, `flutter test`, `flutter build`, or any platform compile/run is NOT required.
+- Generation, localization, and formatting commands still apply when their inputs change (see 3.1 / 3.2 / 3.3), and `pubspec.yaml` changes still require `flutter pub get`.
+- When a change touches build workflows or path dependencies, keep them in sync as described in 3.7.
+- When delivering, state explicitly what was changed and what residual risks remain.
 
 ### 3.5 Do Not Hand-Edit or Commit What Should Not Be Committed
 
@@ -218,16 +201,8 @@ flutter test
 - If Material native components must be used for semantic or framework reasons, explicitly suppress off-style default feedback and consolidate styling into shared components instead of patching it piecemeal across pages.
 - Icons, spacing, forms, dialogs, and panel styles should follow existing theme tokens and components. Do not mix multiple visual languages on the same page.
 
-### 3.10 Tests and Self-Review Must Be Requirement-Driven
+### 3.10 Self-Review Must Be Requirement-Driven
 
-- Tests must be driven by requirements, defect symptoms, or acceptance criteria -- not by chasing implementation details.
-- Before writing tests, list the minimum scenario set for this task. At minimum, explicitly cover:
-  - Happy path
-  - Boundary inputs
-  - Error or failure paths
-  - State transitions or interaction branches (if applicable)
-- When fixing bugs, write a minimal failing case first, then fix. Do not only add an after-the-fact weak-assertion test that "happens to pass".
-- Never widen public API surface, expose private internals, or distort production code responsibilities just to make tests easier to write.
 - Before completion, perform at least one self-review explicitly checking these dimensions:
   - Maintainability: Is the code easier to read and modify than before?
   - Performance: Any obvious extra rebuilds, IO, traversals, or allocations introduced?
@@ -243,7 +218,7 @@ flutter test
 2. Read relevant code and config. Write clear acceptance criteria. For desktop tasks, confirm entry topology first: `main.dart` -> `lib/desktop/**` -> shared chat layout.
 3. Batch all independent context reads, searches, and status checks in parallel, then decide the minimal change landing point.
 4. List requirement scenarios and verification methods first, then make minimal changes. Do not mix in unrelated refactoring.
-5. Run the generation, formatting, analysis, and test commands relevant to this task.
+5. Run the generation and formatting commands relevant to this task (analysis / compiles / tests are not required).
 6. Self-review `git diff`. Confirm no missed localization, generated files, compatibility risks, or unrelated changes.
 7. When delivering, state explicitly:
    - What was changed
@@ -258,27 +233,20 @@ flutter test
 - `flutter gen-l10n` has been executed and generated files match ARB content.
 - If Hive models were touched, `build_runner` has been executed.
 - `dart format` has been executed.
-- `flutter analyze` has been executed.
-- Related `flutter test` has been executed. If no related tests exist, create and run them following official testing standards.
-- Test scenarios cover the happy path, boundary values, and failure paths for this task's requirements -- not just a single green run.
 - Desktop tasks have confirmed the entry layer. No desktop-only logic leaked into mobile branches.
 - New or adjusted UI prioritized reuse of existing shared / desktop components. No near-duplicate widgets created.
 - New UI does not introduce unnecessary Android ripple or Material default interaction feedback.
 - At least one round of self-review completed, checking maintainability, performance, security, style consistency, and compatibility boundary.
 - No real secrets, build artifacts, or unrelated files committed.
-- If workflows / platform directories / path dependencies were touched, corresponding extra verification has been done.
+- If workflows / platform directories / path dependencies were touched, the corresponding files have been kept in sync.
 
 ## 6. External Best Practices
 
 - Code should follow the Flutter contribution guide:
   - https://github.com/flutter/flutter/blob/main/CONTRIBUTING.md
-- Tests should reference:
-  - https://github.com/flutter/flutter/blob/main/docs/contributing/testing/Writing-Effective-Tests.md
-  - https://github.com/flutter/flutter/blob/main/docs/contributing/testing/Running-and-writing-tests.md
 - For Flutter code style, follow the Flutter styleguide first. Follow Effective Dart: Style only when it does not conflict:
   - https://github.com/flutter/flutter/blob/main/docs/contributing/Style-guide-for-Flutter-repo.md
   - https://dart.dev/effective-dart/style
-- If the repo ever introduces `engine/`-level changes, add engine test guidance then. The repo currently has no such directory; do not apply it mechanically.
 - PR descriptions should include the Pre-launch Checklist from the Flutter PR template when applicable:
   - https://github.com/flutter/flutter/blob/main/.github/PULL_REQUEST_TEMPLATE.md
 
