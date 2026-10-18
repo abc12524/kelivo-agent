@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit
 object PythonManager {
 
     private const val ASSET_TAR = "python-env.bin"
+    private const val ASSET_CA = "ca_bundle.crt"
     private const val PYTHON_DIR = "python"
 
     @Volatile
@@ -34,6 +35,7 @@ object PythonManager {
     private var pythonHome: String = ""
     private var pythonBin: String = ""
     private var libPath: String = ""
+    private var caBundlePath: String = ""
     private var initError: String = ""
 
     enum class InitStatus {
@@ -96,6 +98,9 @@ object PythonManager {
             // 创建缺失的系统库软连接（如 libz.so.1 → /system/lib64/libz.so）
             fixMissingLibs()
 
+            // 安装 CA 证书包（内嵌 Python 无系统根证书，HTTPS 会校验失败）
+            installCaBundle(context)
+
             // 验证
             if (!File(pythonBin).exists()) {
                 throw RuntimeException("解压后找不到 Python 二进制: $pythonBin")
@@ -107,6 +112,18 @@ object PythonManager {
             status = InitStatus.FAILED
             initError = e.message ?: "未知错误"
             throw e
+        }
+    }
+
+    private fun installCaBundle(context: Context) {
+        val target = File(context.filesDir, ASSET_CA)
+        caBundlePath = target.absolutePath
+        try {
+            context.assets.open(ASSET_CA).use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            }
+        } catch (e: Exception) {
+            caBundlePath = ""
         }
     }
 
@@ -266,7 +283,7 @@ print(json.dumps(info, ensure_ascii=False))
     private fun runPython(args: List<String>, timeoutSec: Int): ProcessResult {
         // 用 linker64 绕过 SELinux noexec 限制（Android 禁止直接执行 app 私有目录下的二进制）
         val cmd = mutableListOf("/system/bin/linker64", pythonBin).also { it.addAll(args) }
-        val env = mapOf(
+        val env = mutableMapOf(
             "LD_LIBRARY_PATH" to libPath,
             "PYTHONHOME" to pythonHome,
             "HOME" to File(pythonHome).parentFile.absolutePath,
@@ -274,6 +291,9 @@ print(json.dumps(info, ensure_ascii=False))
                 File(it).mkdirs()
             }
         )
+        if (caBundlePath.isNotEmpty() && File(caBundlePath).exists()) {
+            env["SSL_CERT_FILE"] = caBundlePath
+        }
 
         return try {
             val pb = ProcessBuilder(cmd)
