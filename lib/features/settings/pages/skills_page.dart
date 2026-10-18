@@ -170,6 +170,17 @@ class _SkillsPageState extends State<SkillsPage> {
     await _loadRemote();
   }
 
+  Future<void> _toggleHide(SkillMeta s) async {
+    final target = s.enabled ? 'hidden' : 'enable';
+    final err = SkillTool.instance.setStatus(s.path, target);
+    if (err != null) {
+      _snack(err);
+      return;
+    }
+    SkillTool.instance.invalidate();
+    await _refresh();
+  }
+
   Future<void> _confirmDeleteLocal(SkillMeta s) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -386,7 +397,7 @@ class _SkillsPageState extends State<SkillsPage> {
                       Padding(
                         padding: const EdgeInsets.only(left: 8),
                         child: Text(
-                          '(disabled)',
+                          '(已隐藏)',
                           style: TextStyle(
                             fontSize: 12,
                             color: cs.onSurface.withValues(alpha: 0.5),
@@ -420,10 +431,20 @@ class _SkillsPageState extends State<SkillsPage> {
               ],
             ),
           ),
-          IconButton(
-            icon: const Icon(Lucide.Trash2),
-            color: cs.error,
-            onPressed: () => _confirmDeleteLocal(s),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: s.enabled ? '隐藏' : '取消隐藏',
+                icon: Icon(s.enabled ? Lucide.EyeOff : Lucide.Eye),
+                onPressed: () => _toggleHide(s),
+              ),
+              IconButton(
+                icon: const Icon(Lucide.Trash2),
+                color: cs.error,
+                onPressed: () => _confirmDeleteLocal(s),
+              ),
+            ],
           ),
         ],
       ),

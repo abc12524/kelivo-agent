@@ -12,6 +12,7 @@ class SkillMeta {
   final String name;
   final String description;
   final bool enabled;
+  final String status;
   final String usage;
   final String path;
 
@@ -19,6 +20,7 @@ class SkillMeta {
     required this.name,
     required this.description,
     required this.enabled,
+    required this.status,
     required this.usage,
     required this.path,
   });
@@ -130,6 +132,55 @@ class SkillTool extends ToolFamily {
   /// 使扫描缓存失效，下一次 [ensureScanned] 强制重扫（安装/删除 skill 后调用）。
   void invalidate() {
     _cachedSignature = '';
+  }
+
+  /// 改写某个 skill 入口脚本头部的 `# status:`（隐藏=hidden / 取消隐藏=enable）。
+  /// 返回 null 表示成功；否则为失败原因（找不到入口文件 / 读写失败）。
+  String? setStatus(String path, String value) {
+    final file = File(path);
+    if (!file.existsSync()) return '找不到入口文件: $path';
+    List<String> lines;
+    try {
+      lines = file.readAsLinesSync();
+    } catch (_) {
+      return '无法读取入口文件: $path';
+    }
+    // 头部块结束位置（首个非注释、非空行）
+    var end = 0;
+    while (end < lines.length) {
+      final s = lines[end].trim();
+      if (s.isNotEmpty && !s.startsWith('#')) break;
+      end++;
+    }
+    var insertAt = -1;
+    for (var i = 0; i < end; i++) {
+      final t = lines[i].trim();
+      if (_statusHeadRe.hasMatch(t)) {
+        lines[i] = '# status: $value';
+        return _writeHeader(file, lines);
+      }
+      if (insertAt < 0 && _descHeadRe.hasMatch(t)) insertAt = i + 1;
+    }
+    if (insertAt < 0) {
+      for (var i = 0; i < end; i++) {
+        if (_skillHeadRe.hasMatch(lines[i].trim())) {
+          insertAt = i + 1;
+          break;
+        }
+      }
+    }
+    if (insertAt < 0) insertAt = end;
+    lines.insert(insertAt, '# status: $value');
+    return _writeHeader(file, lines);
+  }
+
+  String? _writeHeader(File file, List<String> lines) {
+    try {
+      file.writeAsStringSync('${lines.join('\n')}\n');
+      return null;
+    } catch (e) {
+      return '写入失败: $e';
+    }
   }
 
   Future<Directory> _skillsDir() async {
@@ -392,6 +443,7 @@ class SkillTool extends ToolFamily {
       name: skillName,
       description: description,
       enabled: !_disabled.contains(status.toLowerCase()),
+      status: status,
       usage: usageLines.join('\n').trim(),
       path: file.path,
     );
@@ -415,11 +467,25 @@ class SkillTool extends ToolFamily {
   );
   static final RegExp _hashRe = RegExp(r'^#\s?');
   static final RegExp _nameRe = RegExp(r'^[A-Za-z0-9_\-]{1,64}$');
+  static final RegExp _statusHeadRe = RegExp(
+    r'^#\s*status\s*:',
+    caseSensitive: false,
+  );
+  static final RegExp _descHeadRe = RegExp(
+    r'^#\s*description\s*:',
+    caseSensitive: false,
+  );
+  static final RegExp _skillHeadRe = RegExp(
+    r'^#\s*skill\s*:',
+    caseSensitive: false,
+  );
   static const Set<String> _disabled = {
     'disable',
     'disabled',
     'off',
     'false',
     '0',
+    'hidden',
+    'hide',
   };
 }
