@@ -6,6 +6,7 @@ import '../../../core/services/tools/skill_hub_store.dart';
 import '../../../core/services/tools/skill_hub_tool.dart';
 import '../../../core/services/tools/skill_tool.dart';
 import '../../../icons/lucide_adapter.dart';
+import '../../../l10n/app_localizations.dart';
 import 'package:Kelivo/theme/app_font_weights.dart';
 
 /// skill 管理页：列出 skills/ 目录下自动注册的自建 Python 工具（查看用法 / 删除），
@@ -171,7 +172,7 @@ class _SkillsPageState extends State<SkillsPage> {
   }
 
   Future<void> _toggleHide(SkillMeta s) async {
-    final target = s.enabled ? 'hidden' : 'enable';
+    final target = s.enabled ? 'disable' : 'enable';
     final err = SkillTool.instance.setStatus(s.path, target);
     if (err != null) {
       _snack(err);
@@ -374,6 +375,7 @@ class _SkillsPageState extends State<SkillsPage> {
   }
 
   Widget _skillCard(ColorScheme cs, SkillMeta s) {
+    final l10n = AppLocalizations.of(context)!;
     return _card(
       cs,
       Row(
@@ -397,7 +399,7 @@ class _SkillsPageState extends State<SkillsPage> {
                       Padding(
                         padding: const EdgeInsets.only(left: 8),
                         child: Text(
-                          '(已隐藏)',
+                          l10n.skillsPageHiddenLabel,
                           style: TextStyle(
                             fontSize: 12,
                             color: cs.onSurface.withValues(alpha: 0.5),
@@ -435,7 +437,9 @@ class _SkillsPageState extends State<SkillsPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
-                tooltip: s.enabled ? '隐藏' : '取消隐藏',
+                tooltip: s.enabled
+                    ? l10n.skillsPageHideTooltip
+                    : l10n.skillsPageUnhideTooltip,
                 icon: Icon(s.enabled ? Lucide.EyeOff : Lucide.Eye),
                 onPressed: () => _toggleHide(s),
               ),

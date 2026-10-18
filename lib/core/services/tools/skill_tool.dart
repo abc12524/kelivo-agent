@@ -134,7 +134,7 @@ class SkillTool extends ToolFamily {
     _cachedSignature = '';
   }
 
-  /// 改写某个 skill 入口脚本头部的 `# status:`（隐藏=hidden / 取消隐藏=enable）。
+  /// 改写某个 skill 入口脚本头部的 `# status:`（隐藏=disable / 取消隐藏=enable）。
   /// 返回 null 表示成功；否则为失败原因（找不到入口文件 / 读写失败）。
   String? setStatus(String path, String value) {
     final file = File(path);
@@ -485,7 +485,5 @@ class SkillTool extends ToolFamily {
     'off',
     'false',
     '0',
-    'hidden',
-    'hide',
   };
 }

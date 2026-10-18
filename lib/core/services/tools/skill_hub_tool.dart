@@ -522,7 +522,5 @@ class SkillHubTool extends ToolFamily {
     'off',
     'false',
     '0',
-    'hidden',
-    'hide',
   };
 }

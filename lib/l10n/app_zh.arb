@@ -1955,5 +1955,8 @@
         "type": "int"
       }
     }
-  }
+  },
+  "skillsPageHiddenLabel": "(已隐藏)",
+  "skillsPageHideTooltip": "隐藏",
+  "skillsPageUnhideTooltip": "取消隐藏"
 }
