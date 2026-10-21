@@ -71,6 +71,11 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
         }
+        // 压缩 APK 内的 native 库（默认 AGP 8 为 stored）。体积优先；
+        // 代价是安装时解压到应用私有目录，安装后占用不会变小。
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 }
 

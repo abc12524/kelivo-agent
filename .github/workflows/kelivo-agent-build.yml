@@ -71,7 +71,7 @@ jobs:
       - name: 🏗️ 构建 Release APK (arm64-v8a)
         run: |
           flutter pub get
-          flutter build apk --release --split-debug-info=build/symbols --obfuscate
+          flutter build apk --release --target-platform android-arm64 --split-debug-info=build/symbols --obfuscate
 
       - name: 📦 重命名 APK
         run: |
