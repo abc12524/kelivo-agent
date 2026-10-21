@@ -1,5 +1,21 @@
 part of '../chat_api_service.dart';
 
+({String text, String reasoning}) _claudeStepText(
+  List<Map<String, dynamic>> blocks,
+) {
+  final text = StringBuffer();
+  final reasoning = StringBuffer();
+  for (final b in blocks) {
+    final type = (b['type'] ?? '').toString();
+    if (type == 'text') {
+      text.write((b['text'] ?? '').toString());
+    } else if (type == 'thinking') {
+      reasoning.write((b['thinking'] ?? b['text'] ?? '').toString());
+    }
+  }
+  return (text: text.toString(), reasoning: reasoning.toString());
+}
+
 int _readClaudeUsageInt(dynamic value) {
   if (value is num) return value.toInt();
   if (value is String) return int.tryParse(value) ?? 0;
@@ -32,6 +48,7 @@ Stream<ChatStreamChunk> _sendClaudeStream(
   int? maxTokens,
   List<Map<String, dynamic>>? tools,
   ToolCallHandler? onToolCall,
+  StepRecallCallback? onStepRecall,
   Map<String, String>? extraHeaders,
   Map<String, dynamic>? extraBody,
   bool stream = true,
@@ -506,6 +523,14 @@ Stream<ChatStreamChunk> _sendClaudeStream(
         final assistantMsg = {'role': 'assistant', 'content': assistantBlocks};
         final userToolMsg = {'role': 'user', 'content': results};
         convo = [...convo, assistantMsg, userToolMsg];
+        final step = _claudeStepText(assistantBlocks);
+        final recall = await onStepRecall?.call(step.reasoning, step.text);
+        if (recall != null && recall.trim().isNotEmpty) {
+          convo = [
+            ...convo,
+            {'role': 'user', 'content': recall},
+          ];
+        }
         continue; // next round
       }
       // No tool use -> return final text
@@ -991,6 +1016,14 @@ Stream<ChatStreamChunk> _sendClaudeStream(
       {'role': 'assistant', 'content': assistantBlocks},
       {'role': 'user', 'content': toolResultsBlocks},
     ];
+    final step = _claudeStepText(assistantBlocks);
+    final recall = await onStepRecall?.call(step.reasoning, step.text);
+    if (recall != null && recall.trim().isNotEmpty) {
+      convo = [
+        ...convo,
+        {'role': 'user', 'content': recall},
+      ];
+    }
     // Loop to next round; the next response will stream more assistant content
   }
 }

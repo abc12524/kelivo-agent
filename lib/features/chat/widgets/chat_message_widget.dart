@@ -18,6 +18,7 @@ import '../../../core/models/chat_message.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../../../icons/reasoning_icons.dart';
 // import '../../../theme/design_tokens.dart';
+import '../../../core/providers/openviking_provider.dart';
 import '../../../core/providers/user_provider.dart';
 import '../../../core/services/chat/chat_service.dart';
 import '../../../core/providers/assistant_provider.dart';
@@ -1283,7 +1284,9 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   Widget _buildOpenVikingInjectionMessage() {
     final part = ToolUIPart(
       id: widget.message.id,
-      toolName: 'system_search',
+      toolName: widget.message.content.contains('<available_skills>')
+          ? 'skill-list'
+          : 'ov-recall',
       arguments: const <String, dynamic>{},
       content: widget.message.content,
       loading: false,
@@ -2938,14 +2941,17 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.message.role == 'user') {
-      if (MessageBuilderService.isOpenVikingInjectionContent(
-        widget.message.content,
-      )) {
-        return _buildOpenVikingInjectionMessage();
-      }
-      return _buildUserMessage();
+    final injected =
+        widget.message.role == ChatMessage.roleInjectUser ||
+        MessageBuilderService.isOpenVikingInjectionContent(
+          widget.message.content,
+        );
+    if (injected) {
+      final showInjected = context.watch<OpenVikingProvider>().showInjected;
+      if (!showInjected) return const SizedBox.shrink();
+      return _buildOpenVikingInjectionMessage();
     }
+    if (widget.message.role == 'user') return _buildUserMessage();
     if (widget.message.role == 'tool') return _buildToolMessage();
     return _buildAssistantMessage();
   }

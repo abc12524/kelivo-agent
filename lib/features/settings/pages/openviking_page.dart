@@ -58,8 +58,20 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
           _sectionCard(
             cs,
             children: [
-              _switchRow(cs, '自动上传对话', ov.autoCapture, (v) {
-                ov.setAutoCapture(v);
+              _switchRow(cs, '每轮按问题检索', ov.recallQuestion, (v) {
+                ov.setRecallQuestion(v);
+              }),
+              _divider(cs),
+              _switchRow(cs, '每步按助手正文/推理检索', ov.recallStep, (v) {
+                ov.setRecallStep(v);
+              }),
+              _divider(cs),
+              _switchRow(cs, '自动抓取并提交对话', ov.commit, (v) {
+                ov.setCommit(v);
+              }),
+              _divider(cs),
+              _switchRow(cs, '在聊天中显示注入信息', ov.showInjected, (v) {
+                ov.setShowInjected(v);
               }),
             ],
           ),
@@ -169,10 +181,6 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
               _divider(cs),
               _switchRow(cs, '按包名派生 workspace peer', ov.workspacePeer, (v) {
                 ov.setWorkspacePeer(v);
-              }),
-              _divider(cs),
-              _switchRow(cs, '召回跨轮去重', ov.recallDedup, (v) {
-                ov.setRecallDedup(v);
               }),
             ],
           ),

@@ -12,10 +12,12 @@ class OpenVikingProvider extends ChangeNotifier {
   static const _dKey = 'ov_display_count_v1';
   static const _fTKey = 'ov_find_threshold_v1';
   static const _fLKey = 'ov_find_limit_v1';
-  static const _cKey = 'ov_auto_capture_v1';
+  static const _recallQuestionKey = 'ov_recall_question_v1';
+  static const _recallStepKey = 'ov_recall_step_v1';
+  static const _commitKey = 'ov_commit_v1';
+  static const _showInjectedKey = 'show_injected_messages_v1';
   static const _peerKey = 'ov_peer_id_v1';
   static const _wsPeerKey = 'ov_workspace_peer_v1';
-  static const _dedupKey = 'ov_recall_dedup_v1';
 
   String _url = '';
   String _apiKey = '';
@@ -24,10 +26,12 @@ class OpenVikingProvider extends ChangeNotifier {
   int _displayCount = 3;
   double _findThreshold = 0.4;
   int _findLimit = 3;
-  bool _autoCapture = true;
+  bool _recallQuestion = true;
+  bool _recallStep = false;
+  bool _commit = false;
+  bool _showInjected = false;
   String _peerId = '';
   bool _workspacePeer = false;
-  bool _recallDedup = true;
   String _packageName = '';
 
   String get url => _url;
@@ -37,10 +41,12 @@ class OpenVikingProvider extends ChangeNotifier {
   int get displayCount => _displayCount;
   double get findThreshold => _findThreshold;
   int get findLimit => _findLimit;
-  bool get autoCapture => _autoCapture;
+  bool get recallQuestion => _recallQuestion;
+  bool get recallStep => _recallStep;
+  bool get commit => _commit;
+  bool get showInjected => _showInjected;
   String get peerId => _peerId;
   bool get workspacePeer => _workspacePeer;
-  bool get recallDedup => _recallDedup;
 
   OpenVikingService? _service;
   OpenVikingService? get service => _service;
@@ -59,10 +65,12 @@ class OpenVikingProvider extends ChangeNotifier {
     _displayCount = prefs.getInt(_dKey) ?? 3;
     _findThreshold = prefs.getDouble(_fTKey) ?? 0.4;
     _findLimit = prefs.getInt(_fLKey) ?? 3;
-    _autoCapture = prefs.getBool(_cKey) ?? true;
+    _recallQuestion = prefs.getBool(_recallQuestionKey) ?? true;
+    _recallStep = prefs.getBool(_recallStepKey) ?? false;
+    _commit = prefs.getBool(_commitKey) ?? false;
+    _showInjected = prefs.getBool(_showInjectedKey) ?? false;
     _peerId = prefs.getString(_peerKey) ?? '';
     _workspacePeer = prefs.getBool(_wsPeerKey) ?? false;
-    _recallDedup = prefs.getBool(_dedupKey) ?? true;
     _rebuildService();
     notifyListeners();
     await _loadPackageName();
@@ -137,10 +145,28 @@ class OpenVikingProvider extends ChangeNotifier {
     (await SharedPreferences.getInstance()).setInt(_fLKey, _findLimit);
   }
 
-  Future<void> setAutoCapture(bool v) async {
-    _autoCapture = v;
+  Future<void> setRecallQuestion(bool v) async {
+    _recallQuestion = v;
     notifyListeners();
-    (await SharedPreferences.getInstance()).setBool(_cKey, v);
+    (await SharedPreferences.getInstance()).setBool(_recallQuestionKey, v);
+  }
+
+  Future<void> setRecallStep(bool v) async {
+    _recallStep = v;
+    notifyListeners();
+    (await SharedPreferences.getInstance()).setBool(_recallStepKey, v);
+  }
+
+  Future<void> setCommit(bool v) async {
+    _commit = v;
+    notifyListeners();
+    (await SharedPreferences.getInstance()).setBool(_commitKey, v);
+  }
+
+  Future<void> setShowInjected(bool v) async {
+    _showInjected = v;
+    notifyListeners();
+    (await SharedPreferences.getInstance()).setBool(_showInjectedKey, v);
   }
 
   Future<void> setPeerId(String v) async {
@@ -157,9 +183,4 @@ class OpenVikingProvider extends ChangeNotifier {
     (await SharedPreferences.getInstance()).setBool(_wsPeerKey, v);
   }
 
-  Future<void> setRecallDedup(bool v) async {
-    _recallDedup = v;
-    notifyListeners();
-    (await SharedPreferences.getInstance()).setBool(_dedupKey, v);
-  }
 }

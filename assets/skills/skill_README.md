@@ -1,4 +1,4 @@
-# android-agent skill 说明文档
+# kelivo-agent skill 说明文档
 
 本目录（`filesDir/skills/`）存放 **skill（自建 Python 工具）**。每个 `*.py` 脚本即一个
 可被 LLM 调用的工具；`skill` 工具会扫描本目录并按脚本头部**自动注册**：
@@ -7,8 +7,7 @@
 > 以 `_` 开头的文件（如 `_skill_runner.py`、`_envelope.py`）是运行时内部文件，不会被注册。
 
 `skill` 工具只负责**调用**已注册的 skill（以及 `delete` 注销），不再负责创建脚本。
-新增 skill 的方式是把脚本文件写进本目录，**推荐用 `script` skill 写入**
-（`create` 新建 / `edit` 改写，见下方“改代码首选 `script`”）；也可用 `skill_hub` 工具从远程仓库下载安装。
+新增 skill 的方式是把脚本文件写进本目录，或用 `skill_hub` 工具从远程仓库下载安装。
 
 ## 两种布局（可混用）
 
@@ -22,7 +21,7 @@
 ## 目录与运行环境
 
 - 运行 Python：应用内置的 **Python 3.13**（完整标准库 + pip，清华源）。可用 `system_tool` 的
-  `python_pip` 安装第三方包（如 `requests`）。
+  `python`（`mode=pip`）安装第三方包（如 `requests`）。
 - 脚本工作目录即本目录，可直接 `import` 同目录下的其他脚本或 `_envelope`。
 - 执行方式：`skill` 工具的调用会在独立进程中导入脚本并调用 `run(arguments)`。
 
@@ -100,13 +99,9 @@ def run(arguments):
 
 ## 约定与建议
 
-- **改代码首选 `script`**：新增或修改本目录（或任何）代码/脚本文件时，优先用 `script` skill：
-  `read`/`outline` 看清结构，再动笔——**新建文件用 `create`**（file_path 不存在才建，可自动建父目录），
-  改已有文件用 `edit`/`add`/`delete`（唯一匹配校验 + unified diff），`dry_run=true` 先预览 diff 再落盘；
-  **不要**用 `sed`、`python` 的 `str.replace` 手搓。
 - **返回值即工具结果**：LLM 只看到 `run` 的返回值，尽量返回结构化 dict。
 - **错误用信封**：失败返回 `error("原因", code="...")`，便于 LLM 自纠。
 - **错误码**：`invalid_argument` / `not_found` / `unknown_skill` / `io_error` / `internal` 等。
 - **幂等与安全**：涉及删除/写文件等危险操作时，校验参数并在说明中写明。
-- **依赖**：优先标准库；需要第三方库时用 `system_tool` 的 `python_pip` 安装。
+- **依赖**：优先标准库；需要第三方库时用 `system_tool` 的 `python`（`mode=pip`）安装。
 - **状态控制**：临时下线某 skill，把头部 `# status:` 改为 `disable`（仍可按名调用，只是不出现在清单里）。

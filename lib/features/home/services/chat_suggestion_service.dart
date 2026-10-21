@@ -1,6 +1,7 @@
 import '../../../core/models/chat_message.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/api/chat_api_service.dart';
+import '../../../core/services/openviking/recall.dart';
 
 class ChatSuggestionService {
   static const int maxSuggestionCount = 3;
@@ -53,7 +54,8 @@ class ChatSuggestionService {
         .where(
           (m) =>
               (m.role == 'user' || m.role == 'assistant') &&
-              m.content.trim().isNotEmpty,
+              m.content.trim().isNotEmpty &&
+              !Recall.isInjectedContent(m.content),
         )
         .toList();
     final selected = recent.length > maxMessages

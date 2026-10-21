@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/chat_message.dart';
+import 'recall.dart';
 
 class OpenVikingService {
   final String baseUrl;
@@ -35,12 +37,35 @@ class OpenVikingService {
   static final Map<String, Set<String>> _capturedIds =
       {}; // conversationId -> 已捕获消息 id
 
-  // 跨轮召回按 URI 去重（对齐 android-agent 的 _RECALL_SEEN）
-  static final Map<String, Set<String>> _recallSeen = {};
-
-  static const String _recallMarker = '[自动检索的候选记忆';
+  static const String _sessionsPrefsKey = 'ov_sessions_v1';
+  static Future<void>? _sessionsLoaded;
 
   String? _peerCache;
+
+  /// 会话 → OV session 的映射持久化（SharedPreferences，避免多一次 Hive 迁移）。
+  static Future<void> _ensureSessionsLoaded() {
+    return _sessionsLoaded ??= () async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final raw = prefs.getString(_sessionsPrefsKey);
+        if (raw == null || raw.isEmpty) return;
+        final decoded = jsonDecode(raw);
+        if (decoded is! Map) return;
+        decoded.forEach((k, v) {
+          if (k is String && v is String && v.isNotEmpty) {
+            _ovSessions[k] = v;
+          }
+        });
+      } catch (_) {}
+    }();
+  }
+
+  static Future<void> _saveSessions() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_sessionsPrefsKey, jsonEncode(_ovSessions));
+    } catch (_) {}
+  }
 
   /// 解析当前 actor peer：显式 ovPeerId > 按包名派生 ws-* > 回退 default
   /// （对齐 android-agent / 官方 DSH 插件）。
@@ -247,40 +272,6 @@ class OpenVikingService {
     );
   }
 
-  /// 加载相关记忆作为上下文（带跨轮按 URI 去重）；自动注入走 find 接口（纯向量低延迟）。
-  /// [sessionId] 非空且 [dedup] 为 true 时，同一会话已注入过的 URI 不再重复注入。
-  Future<String> loadContext(
-    String query, {
-    double scoreThreshold = 0.4,
-    int displayCount = 3,
-    String sessionId = '',
-    bool dedup = true,
-  }) async {
-    if (displayCount <= 0 || baseUrl.isEmpty) return '';
-    final result = await find(
-      query,
-      scoreThreshold: scoreThreshold,
-      limit: displayCount,
-    );
-    if (result.hits.isEmpty) return '';
-
-    var hits = result.hits;
-    if (sessionId.isNotEmpty && dedup) {
-      final seen = _recallSeen.putIfAbsent(sessionId, () => <String>{});
-      hits = hits.where((h) => h.uri.isEmpty || seen.add(h.uri)).toList();
-      if (seen.length > 500) {
-        _recallSeen[sessionId] = seen.toList().sublist(seen.length - 500).toSet();
-      }
-    }
-    if (hits.isEmpty) return '';
-    return hits
-        .map((h) {
-          final scoreStr = h.score > 0 ? '(${h.score.toStringAsFixed(2)})' : '';
-          return '> 📚 [${h.uri}] $scoreStr\n  ${h.snippet}';
-        })
-        .join('\n');
-  }
-
   // ========== 保存记忆（对齐 android-agent：replace 失败 404/NOT_FOUND 时重试 create） ==========
 
   /// 保存记忆到 `viking://user/<user>/peers/<peer>/memories/<category>/<name>.md`。
@@ -451,10 +442,22 @@ class OpenVikingService {
 
   // ========== 对话自动上传（捕获到 OV Session 并提取长期记忆） ==========
 
-  /// 把一段对话捕获到 OpenViking Session 并提取长期记忆（对齐 android-agent 的
-  /// captureSession）。按 conversationId 复用同一个 OV session，只追加尚未捕获的新消息
-  /// （带噪音过滤，跳过自动注入的检索/记忆块与短回复）。失败静默，不影响主对话。
-  Future<void> captureSession(
+  /// 取本地会话对应的 OV session；没有则新建并持久化（失败返回 null）。
+  Future<String?> ensureSession(String conversationId) async {
+    if (baseUrl.isEmpty || conversationId.isEmpty) return null;
+    await _ensureSessionsLoaded();
+    final existing = _ovSessions[conversationId];
+    if (existing != null && existing.isNotEmpty) return existing;
+    final created = await _createSessionRaw();
+    if (created == null || created.isEmpty) return null;
+    _ovSessions[conversationId] = created;
+    await _saveSessions();
+    return created;
+  }
+
+  /// 把尚未捕获的消息追加到会话对应的 OV session（不 commit）。
+  /// 带噪音过滤，跳过自动注入的检索/skill 块与短回复。失败静默。
+  Future<void> captureMessages(
     String conversationId,
     List<ChatMessage> messages, {
     Map<String, List<Map<String, dynamic>>>? toolEventsById,
@@ -470,21 +473,37 @@ class OpenVikingService {
           .toList();
       if (newMessages.isEmpty) return;
 
-      final ovSession =
-          _ovSessions[conversationId] ?? await _createSessionRaw();
+      final ovSession = await ensureSession(conversationId);
       if (ovSession == null) return;
-      _ovSessions[conversationId] = ovSession;
 
       final ovMessages = _toOvMessages(newMessages, toolEventsById);
-      if (ovMessages.isEmpty) return;
+      if (ovMessages.isEmpty) {
+        captured.addAll(newMessages.map((m) => m.id));
+        return;
+      }
 
-      await _client
+      final resp = await _client
           .post(
             _endpoint('/api/v1/sessions/$ovSession/messages/batch'),
             headers: _headers,
             body: jsonEncode({'messages': ovMessages}),
           )
           .timeout(const Duration(seconds: 15));
+      if (resp.statusCode == 200) {
+        captured.addAll(newMessages.map((m) => m.id));
+      }
+    } catch (_) {
+      // 静默跳过
+    }
+  }
+
+  /// 提交/归档 OV session，触发记忆提取（失败静默）。
+  Future<void> commitSession(String conversationId) async {
+    if (baseUrl.isEmpty) return;
+    await _ensureSessionsLoaded();
+    final ovSession = _ovSessions[conversationId];
+    if (ovSession == null || ovSession.isEmpty) return;
+    try {
       await _client
           .post(
             _endpoint('/api/v1/sessions/$ovSession/commit'),
@@ -492,8 +511,6 @@ class OpenVikingService {
             body: jsonEncode({'keep_recent_count': 0}),
           )
           .timeout(const Duration(seconds: 15));
-
-      captured.addAll(newMessages.map((m) => m.id));
     } catch (_) {
       // 静默跳过
     }
@@ -537,7 +554,8 @@ class OpenVikingService {
     final out = <Map<String, dynamic>>[];
     for (final m in messages) {
       var c = m.content;
-      if (c.contains(_recallMarker)) continue;
+      if (m.role == ChatMessage.roleInjectUser) continue;
+      if (Recall.isInjectedContent(c)) continue;
       if (m.role != 'user' && m.role != 'assistant') continue;
       c = c.length > 4000 ? c.substring(0, 4000) : c;
       final textCaptured = _shouldCapture(c, m.role);

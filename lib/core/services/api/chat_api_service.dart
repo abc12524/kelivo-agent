@@ -41,6 +41,33 @@ typedef ToolCallHandler =
       String? toolCallId,
     });
 
+/// 每步召回：以 LLM 的 reasoning / content 为 query，返回要追加到下一轮请求的
+/// 注入文本（null 表示不注入）。仅在工具轮次之间调用。
+typedef StepRecallCallback =
+    Future<String?> Function(String reasoning, String content);
+
+/// 把每步召回结果追加为一条 user 消息（不改动原有对话顺序）。
+Future<List<Map<String, dynamic>>> _appendStepRecall(
+  List<Map<String, dynamic>> messages,
+  String reasoning,
+  String content,
+  StepRecallCallback? onStepRecall,
+) async {
+  if (onStepRecall == null) return messages;
+  if (reasoning.trim().isEmpty && content.trim().isEmpty) return messages;
+  String? injected;
+  try {
+    injected = await onStepRecall(reasoning, content);
+  } catch (_) {
+    injected = null;
+  }
+  if (injected == null || injected.trim().isEmpty) return messages;
+  return <Map<String, dynamic>>[
+    ...messages,
+    {'role': 'user', 'content': injected},
+  ];
+}
+
 String _effectiveToolCallId(
   dynamic rawId,
   String fallbackPrefix,
@@ -559,6 +586,7 @@ class ChatApiService {
     int? maxTokens,
     List<Map<String, dynamic>>? tools,
     ToolCallHandler? onToolCall,
+    StepRecallCallback? onStepRecall,
     Map<String, String>? extraHeaders,
     Map<String, dynamic>? extraBody,
     bool stream = true,
@@ -627,6 +655,7 @@ class ChatApiService {
             maxTokens: maxTokens,
             tools: tools,
             onToolCall: onToolCall,
+            onStepRecall: onStepRecall,
             extraHeaders: sessionHeaders,
             extraBody: extraBody,
             stream: stream,
@@ -644,6 +673,7 @@ class ChatApiService {
             maxTokens: maxTokens,
             tools: tools,
             onToolCall: onToolCall,
+            onStepRecall: onStepRecall,
             extraHeaders: sessionHeaders,
             extraBody: extraBody,
             stream: stream,
@@ -662,6 +692,7 @@ class ChatApiService {
           maxTokens: maxTokens,
           tools: tools,
           onToolCall: onToolCall,
+          onStepRecall: onStepRecall,
           extraHeaders: sessionHeaders,
           extraBody: extraBody,
           stream: stream,

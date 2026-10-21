@@ -879,6 +879,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
   int? maxTokens,
   List<Map<String, dynamic>>? tools,
   ToolCallHandler? onToolCall,
+  StepRecallCallback? onStepRecall,
   Map<String, String>? extraHeaders,
   Map<String, dynamic>? extraBody,
   bool stream = true,
@@ -1808,7 +1809,12 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
           }
 
           // Follow-up request(s) with multi-round tool calls
-          var currentMessages = mm2;
+          var currentMessages = await _appendStepRecall(
+            mm2,
+            reasoningBuffer,
+            assistantContentBuffer,
+            onStepRecall,
+          );
           while (true) {
             final Map<String, dynamic> body2 = useLongCatOmniPayload
                 ? {
@@ -2190,6 +2196,12 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                     'content': r['content'],
                   },
               ];
+              currentMessages = await _appendStepRecall(
+                currentMessages,
+                reasoningAccum,
+                contentAccum,
+                onStepRecall,
+              );
               // Continue loop
               continue;
             } else {

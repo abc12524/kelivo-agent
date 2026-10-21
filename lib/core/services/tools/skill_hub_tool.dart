@@ -20,10 +20,12 @@ import 'tool_family.dart';
 /// `skill_hub_base`（如 http://192.168.30.181:3000）则按 gitea 处理，否则按 github。
 ///
 /// action 分发（两段式）：
-///   - 不传 action                  → 子工具清单
-///   - action=list                  → 列出远程技能（含平台 / 依赖 / 是否已装）
-///   - action=install + params{name} → 下载安装（覆盖安装，保留本地 config.json）
-///   - action=remove  + params{name} → 默认下线（# status: disable）；hard=true 才删除
+///   - 不传 action                   → 子工具清单
+///   - action=list                   → 列出远程技能（含平台 / 依赖 / 是否已装）
+///   - action=install + params{name}  → 下载安装（覆盖安装，保留本地 config.json）
+///   - action=disable + params{name}  → 下线（# status: disable，对 LLM 隐藏）
+///   - action=enable  + params{name}  → 重新启用
+///   - action=remove  + params{name}  → 删除技能文件（卸载）
 ///
 /// 安全：下载即等价于信任该仓库的代码（会在内置 Python 进程内 import 执行）。
 class SkillHubTool extends ToolFamily {
@@ -47,17 +49,27 @@ class SkillHubTool extends ToolFamily {
       'install: 需 params.name（远程技能名）；下载到 skills/<名>/ 并自动注册',
     ),
     SubTool(
+      'disable',
+      '下线本地技能（对 LLM 隐藏）',
+      'disable: 需 params.name；改写头部 # status: disable，文件保留',
+    ),
+    SubTool(
+      'enable',
+      '重新启用已下线技能',
+      'enable: 需 params.name；改写头部 # status: enable',
+    ),
+    SubTool(
       'remove',
-      '下线或删除本地技能',
-      'remove: 需 params.name；默认仅下线（# status: disable，保留文件）；params.hard=true 才真正删除',
+      '删除本地技能（卸载）',
+      'remove: 需 params.name；直接删除技能文件',
     ),
   ];
 
   @override
   String get description =>
-      '远程技能仓库（GitHub / Gitea）。子工具：list / install / remove。'
+      '远程技能仓库（GitHub / Gitea）。子工具：list / install / disable / enable / remove。'
       'list 查看可装技能；install + params{name} 下载安装；'
-      'remove + params{name} 默认下线（可恢复），remove + params{name,hard=true} 才删除。'
+      'disable 对 LLM 隐藏；enable 重新启用；remove 直接删除。'
       '下载即信任其代码（会在进程内执行）。仓库地址可在「Skill 管理」页修改。';
 
   @override
@@ -73,11 +85,18 @@ class SkillHubTool extends ToolFamily {
               return await _list();
             case 'install':
               return await _install((params['name'] as String?)?.trim() ?? '');
-            case 'remove':
-              return await _remove(
+            case 'disable':
+              return _setEnabled(
                 (params['name'] as String?)?.trim() ?? '',
-                _asBool(params['hard']),
+                false,
               );
+            case 'enable':
+              return _setEnabled(
+                (params['name'] as String?)?.trim() ?? '',
+                true,
+              );
+            case 'remove':
+              return _remove((params['name'] as String?)?.trim() ?? '');
             default:
               return jsonEncode({'status': 'error', 'error': '未知操作: $action'});
           }
@@ -198,7 +217,7 @@ class SkillHubTool extends ToolFamily {
       'branch': await _branch(),
       'count': items.length,
       'skills': items,
-      'note': 'install + params{name} 安装；remove + params{name} 下线（hard=true 删除）',
+      'note': 'install 安装；disable 隐藏；enable 启用；remove 删除',
     });
   }
 
@@ -318,7 +337,8 @@ class SkillHubTool extends ToolFamily {
     });
   }
 
-  Future<String> _remove(String name, bool hard) async {
+  /// 下线 / 重新启用：只改入口头部的 `# status:`，文件保留。
+  Future<String> _setEnabled(String name, bool enabled) async {
     if (!_nameRe.hasMatch(name)) {
       return jsonEncode({'status': 'error', 'error': "非法技能名 '$name'"});
     }
@@ -327,43 +347,52 @@ class SkillHubTool extends ToolFamily {
     if (entry == null) {
       return jsonEncode({'status': 'error', 'error': "未安装技能 '$name'"});
     }
+    if (!_setStatus(entry, enabled ? 'enable' : 'disable')) {
+      return jsonEncode({
+        'status': 'error',
+        'error': '${enabled ? '启用' : '下线'}失败（无法写入 ${entry.path}）',
+      });
+    }
+    SkillTool.instance.invalidate();
+    return jsonEncode({
+      'status': 'ok',
+      'result': {
+        'skill': name,
+        if (enabled) 'enabled': true else 'disabled': true,
+        'path': entry.path,
+        'note': enabled ? '已重新启用' : '已下线（文件保留，不对 LLM 披露）',
+      },
+    });
+  }
 
-    if (hard) {
-      try {
-        final folder = Directory('${dir.path}/$name');
-        final flat = File('${dir.path}/$name.py');
-        if (folder.existsSync()) {
-          folder.deleteSync(recursive: true);
-        } else if (flat.existsSync()) {
-          flat.deleteSync();
-        } else {
-          entry.deleteSync();
-        }
-      } catch (e) {
-        return jsonEncode({'status': 'error', 'error': '删除失败: $e'});
+  /// 删除技能文件（卸载）。
+  Future<String> _remove(String name) async {
+    if (!_nameRe.hasMatch(name)) {
+      return jsonEncode({'status': 'error', 'error': "非法技能名 '$name'"});
+    }
+    final dir = await _skillsDir();
+    final entry = _findEntryFile(dir, name);
+    if (entry == null) {
+      return jsonEncode({'status': 'error', 'error': "未安装技能 '$name'"});
+    }
+    try {
+      final folder = Directory('${dir.path}/$name');
+      final flat = File('${dir.path}/$name.py');
+      if (folder.existsSync()) {
+        folder.deleteSync(recursive: true);
+      } else if (flat.existsSync()) {
+        flat.deleteSync();
+      } else {
+        entry.deleteSync();
       }
-      SkillTool.instance.invalidate();
-      return jsonEncode({
-        'status': 'ok',
-        'result': {'skill': name, 'removed': true, 'hard': true},
-      });
+    } catch (e) {
+      return jsonEncode({'status': 'error', 'error': '删除失败: $e'});
     }
-
-    // 默认：软下线（改头部 # status: disable，保留文件，可重新安装恢复）
-    if (_setStatus(entry, 'disable')) {
-      SkillTool.instance.invalidate();
-      return jsonEncode({
-        'status': 'ok',
-        'result': {
-          'skill': name,
-          'disabled': true,
-          'hard': false,
-          'path': entry.path,
-          'note': '已下线（文件保留，不对 LLM 披露）；重新 install 可恢复',
-        },
-      });
-    }
-    return jsonEncode({'status': 'error', 'error': '下线失败（无法写入 ${entry.path}）'});
+    SkillTool.instance.invalidate();
+    return jsonEncode({
+      'status': 'ok',
+      'result': {'skill': name, 'removed': true},
+    });
   }
 
   // ==================== 工具方法 ====================
@@ -484,15 +513,6 @@ class SkillHubTool extends ToolFamily {
   List<String> _strList(Object? v) {
     if (v is List) return v.map((e) => e.toString()).toList();
     return const [];
-  }
-
-  bool _asBool(Object? v) {
-    if (v is bool) return v;
-    if (v is num) return v != 0;
-    if (v is String) {
-      return const {'1', 'true', 'yes', 'on'}.contains(v.trim().toLowerCase());
-    }
-    return false;
   }
 
   static final RegExp _nameRe = RegExp(r'^[A-Za-z0-9_.\-]{1,64}$');

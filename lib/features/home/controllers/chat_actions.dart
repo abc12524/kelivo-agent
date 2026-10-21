@@ -506,16 +506,35 @@ class ChatActions {
       viewModel.restoreMessageUiState();
     }
 
-    // Persist OpenViking context injection right after the user message so
-    // history replays match what was sent (stable prefix cache).
-    final ovInjected = await messageGenerationService.persistOpenVikingContext(
-      conversationId: conversation.id,
-      query: content,
-      enabled: _isOpenVikingMcpEnabled(),
-    );
-    if (ovInjected != null &&
-        chatController.appendPersistedTailMessage(ovInjected)) {
+    // 注入（均落库为 inject_user，默认不在 UI 展示）：
+    // 1) skill 名单增量；2) 本轮用户问题抓取到 OV session；3) 按问题召回。
+    final ovEnabled = _isOpenVikingMcpEnabled();
+    messageGenerationService.prepareRecallTurn(conversation.id);
+    final skillInjected = await messageGenerationService
+        .appendSkillDeltaInjection(conversationId: conversation.id);
+    if (skillInjected != null &&
+        chatController.appendPersistedTailMessage(skillInjected)) {
       viewModel.restoreMessageUiState();
+    }
+    if (ovEnabled) {
+      await messageGenerationService.captureUserTurn(
+        conversationId: conversation.id,
+        userMessage: userMessage,
+        enabled: true,
+      );
+      final shouldSkipRecall = input.imagePaths.isNotEmpty;
+      if (!shouldSkipRecall) {
+        final ovInjected = await messageGenerationService
+            .recallQuestionInjection(
+              conversationId: conversation.id,
+              query: content,
+              enabled: true,
+            );
+        if (ovInjected != null &&
+            chatController.appendPersistedTailMessage(ovInjected)) {
+          viewModel.restoreMessageUiState();
+        }
+      }
     }
     onMessagesChanged?.call();
 
@@ -597,6 +616,7 @@ class ChatActions {
         supportsReasoning: supportsReasoning,
         enableReasoning: enableReasoning,
         generateTitleOnFinish: true,
+        onStepRecall: _stepRecallFor(conversation.id),
       );
 
       await _executeGeneration(ctx);
@@ -792,6 +812,7 @@ class ChatActions {
       supportsReasoning: supportsReasoning,
       enableReasoning: enableReasoning,
       generateTitleOnFinish: false,
+      onStepRecall: _stepRecallFor(conversation.id),
     );
 
     await _executeGeneration(ctx);
@@ -897,6 +918,7 @@ class ChatActions {
         supportsReasoning: supportsReasoning,
         enableReasoning: enableReasoning,
         generateTitleOnFinish: false,
+        onStepRecall: _stepRecallFor(conversation.id),
       );
 
       await _executeGeneration(ctx);
@@ -1011,6 +1033,8 @@ class ChatActions {
     final state = stream_ctrl.StreamingState(ctx);
     final assistant = ctx.assistant;
     final conversationId = state.conversationId;
+    // 每轮/每次生成前重建召回去重记录（回滚后不沿用旧记忆）。
+    messageGenerationService.prepareRecallTurn(conversationId);
     final existingSplit = streamController.getContentSplitData(state.messageId);
     if (existingSplit != null) {
       state.contentSplitOffsets = List<int>.of(existingSplit.offsets);
@@ -1038,6 +1062,7 @@ class ChatActions {
         maxTokens: assistant?.maxTokens,
         tools: ctx.toolDefs.isEmpty ? null : ctx.toolDefs,
         onToolCall: ctx.onToolCall,
+        onStepRecall: ctx.onStepRecall,
         extraHeaders: ctx.extraHeaders,
         extraBody: ctx.extraBody,
         stream: ctx.streamOutput,
@@ -1557,6 +1582,18 @@ class ChatActions {
     _maybeCaptureOpenVikingConversation(conversationId);
   }
 
+  /// 每步召回回调：仅在 OV MCP 启用时生效，由设置项 ov_recall_step 控制。
+  StepRecallCallback _stepRecallFor(String conversationId) {
+    return (reasoning, content) {
+      return messageGenerationService.stepRecallInjection(
+        conversationId: conversationId,
+        reasoning: reasoning,
+        content: content,
+        enabled: _isOpenVikingMcpEnabled(),
+      );
+    };
+  }
+
   /// OpenViking 能力开关：由内置 MCP 服务 @kelivo/openviking 决定。
   /// 需「服务已启用」且「当前助手已勾选该服务」；二者同时满足才算启用（含召回）。
   bool _isOpenVikingMcpEnabled() {
@@ -1574,13 +1611,13 @@ class ChatActions {
     }
   }
 
-  /// 对话自动上传：把会话消息增量上传到 OpenViking Session 并提取长期记忆。
-  /// 仅在启用 @kelivo/openviking MCP 服务 + 自动上传时执行；内部静默吞错。
+  /// 对话自动上传：把本轮新增消息追加到 OpenViking Session，并 commit 触发记忆提取。
+  /// 仅在启用 @kelivo/openviking MCP 服务 + ovCommit 开启时执行；内部静默吞错。
   void _maybeCaptureOpenVikingConversation(String conversationId) {
     try {
       final ovProvider = contextProvider.read<OpenVikingProvider>();
       if (!ovProvider.isConfigured ||
-          !ovProvider.autoCapture ||
+          !ovProvider.commit ||
           !_isOpenVikingMcpEnabled()) {
         return;
       }
@@ -1592,13 +1629,14 @@ class ChatActions {
         for (final m in messages)
           if (m.role == 'assistant') m.id: chatService.getToolEvents(m.id),
       };
-      unawaited(
-        svc.captureSession(
+      unawaited(() async {
+        await svc.captureMessages(
           conversationId,
           messages,
           toolEventsById: toolEventsById,
-        ),
-      );
+        );
+        await svc.commitSession(conversationId);
+      }());
     } catch (_) {
       // 静默跳过
     }

@@ -10,6 +10,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/api/chat_api_service.dart';
 import '../../../core/services/chat/chat_service.dart';
 import '../../../core/services/logging/flutter_logger.dart';
+import '../../../core/services/openviking/recall.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../chat/widgets/chat_message_widget.dart' show ToolUIPart;
 import '../services/message_builder_service.dart';
@@ -50,6 +51,11 @@ String buildCompressContextContent(
 String buildConversationTextForCompression(List<ChatMessage> messages) {
   return messages
       .where((m) => m.content.trim().isNotEmpty)
+      .where(
+        (m) =>
+            m.role != ChatMessage.roleInjectUser &&
+            !Recall.isInjectedContent(m.content),
+      )
       .map(
         (m) => '${m.role == "assistant" ? "Assistant" : "User"}: ${m.content}',
       )
@@ -1224,6 +1230,11 @@ class HomeViewModel extends ChangeNotifier {
     final List<ChatMessage> source = collapseVersions(sourceAll);
     final joined = source
         .where((m) => m.content.isNotEmpty)
+        .where(
+          (m) =>
+              m.role != ChatMessage.roleInjectUser &&
+              !Recall.isInjectedContent(m.content),
+        )
         .map(
           (m) =>
               '${m.role == 'assistant' ? 'Assistant' : 'User'}: ${m.content}',
@@ -1320,7 +1331,12 @@ class HomeViewModel extends ChangeNotifier {
     // Get all messages and filter user messages
     final msgs = _chatService.getMessages(convo.id);
     final allUserMsgs = msgs
-        .where((m) => m.role == 'user' && m.content.trim().isNotEmpty)
+        .where(
+          (m) =>
+              m.role == 'user' &&
+              m.content.trim().isNotEmpty &&
+              !Recall.isInjectedContent(m.content),
+        )
         .toList();
 
     if (allUserMsgs.isEmpty) return;
@@ -1335,7 +1351,12 @@ class HomeViewModel extends ChangeNotifier {
         : convo.lastSummarizedMessageCount;
     final msgsAtLastSummary = msgs.take(lastSummarizedMsgCount).toList();
     final userMsgsAtLastSummary = msgsAtLastSummary
-        .where((m) => m.role == 'user' && m.content.trim().isNotEmpty)
+        .where(
+          (m) =>
+              m.role == 'user' &&
+              m.content.trim().isNotEmpty &&
+              !Recall.isInjectedContent(m.content),
+        )
         .length;
 
     // Get new user messages since last summary

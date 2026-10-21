@@ -5,11 +5,14 @@ part 'chat_message.g.dart';
 
 @HiveType(typeId: 0)
 class ChatMessage extends HiveObject {
+  /// 系统注入消息（skill 名单 / OV 召回）：对模型按 user 发送，默认不在 UI 展示。
+  static const String roleInjectUser = 'inject_user';
+
   @HiveField(0)
   final String id;
 
   @HiveField(1)
-  final String role; // 'user' or 'assistant'
+  final String role; // 'user' / 'assistant' / 'inject_user'
 
   @HiveField(2)
   final String content;

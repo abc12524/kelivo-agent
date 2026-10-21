@@ -134,35 +134,48 @@ class _SkillsPageState extends State<SkillsPage> {
     await _loadRemote();
   }
 
-  Future<void> _remove(String name, {required bool hard}) async {
-    if (hard) {
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('删除 skill'),
-          content: Text("彻底删除 skill '$name'？此操作不可撤销（默认应为“下线”）。"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('删除'),
-            ),
-          ],
-        ),
-      );
-      if (ok != true) return;
-    }
+  Future<void> _remove(String name) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除 skill'),
+        content: Text("彻底删除 skill '$name'？此操作不可撤销（仅需临时隐藏请用“下线”）。"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
     setState(() => _busy.add(name));
     try {
       final raw = await SkillHubTool.instance.execute({
         'action': 'remove',
-        'params': {'name': name, if (hard) 'hard': true},
+        'params': {'name': name},
+      });
+      _snack(_resultMessage(raw, fallback: "已删除 '$name'"));
+    } finally {
+      if (mounted) setState(() => _busy.remove(name));
+    }
+    await _refresh();
+    await _loadRemote();
+  }
+
+  Future<void> _setEnabled(String name, bool enabled) async {
+    setState(() => _busy.add(name));
+    try {
+      final raw = await SkillHubTool.instance.execute({
+        'action': enabled ? 'enable' : 'disable',
+        'params': {'name': name},
       });
       _snack(
-        _resultMessage(raw, fallback: hard ? "已删除 '$name'" : "已下线 '$name'"),
+        _resultMessage(raw, fallback: enabled ? "已启用 '$name'" : "已下线 '$name'"),
       );
     } finally {
       if (mounted) setState(() => _busy.remove(name));
@@ -526,24 +539,30 @@ class _SkillsPageState extends State<SkillsPage> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (!installed || !enabled)
+                if (!installed)
                   IconButton(
-                    tooltip: installed ? '重新启用' : '安装',
+                    tooltip: '安装',
                     icon: const Icon(Lucide.Download),
                     onPressed: () => _install(name),
+                  ),
+                if (installed && !enabled)
+                  IconButton(
+                    tooltip: '重新启用',
+                    icon: const Icon(Lucide.Download),
+                    onPressed: () => _setEnabled(name, true),
                   ),
                 if (installed && enabled)
                   IconButton(
                     tooltip: '下线（保留文件）',
                     icon: const Icon(Lucide.EyeOff),
-                    onPressed: () => _remove(name, hard: false),
+                    onPressed: () => _setEnabled(name, false),
                   ),
                 if (installed)
                   IconButton(
                     tooltip: '删除',
                     icon: const Icon(Lucide.Trash2),
                     color: cs.error,
-                    onPressed: () => _remove(name, hard: true),
+                    onPressed: () => _remove(name),
                   ),
               ],
             ),

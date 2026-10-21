@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import '../../../core/models/assistant.dart';
@@ -19,6 +21,8 @@ import 'ask_user_interaction_service.dart';
 import 'message_builder_service.dart';
 import 'tool_approval_service.dart';
 import '../../../core/providers/openviking_provider.dart';
+import '../../../core/services/openviking/recall.dart';
+import '../../../core/services/openviking/recall_engine.dart';
 import '../../../core/services/tools/skill_tool.dart';
 
 /// Callback types for UI updates from MessageGenerationService
@@ -105,6 +109,9 @@ class MessageGenerationService {
   /// Called when file processing finishes.
   VoidCallback? onFileProcessingFinished;
 
+  /// 会话 → 召回引擎（同一会话内强制去重；换会话由 seed 重建）。
+  final Map<String, RecallEngine> _recallEngines = <String, RecallEngine>{};
+
   /// Check if reasoning is enabled for given budget
   bool isReasoningEnabled(int? budget) {
     if (budget == null) return true;
@@ -172,7 +179,6 @@ class MessageGenerationService {
 
     // Inject prompts
     messageBuilderService.injectSystemPrompt(apiMessages, assistant, modelId);
-    messageBuilderService.injectSkillHint(apiMessages);
     await messageBuilderService.injectMemoryAndRecentChats(
       apiMessages,
       assistant,
@@ -246,43 +252,140 @@ class MessageGenerationService {
     );
   }
 
-  /// Search OpenViking for the given query and persist the injected context as
-  /// a user-role message right after the user's message.
-  ///
-  /// Persisting the injection makes later history replays byte-identical to
-  /// what was originally sent to the model, keeping the DeepSeek prefix cache
-  /// stable across turns. Returns the persisted message, or null when OV is not
-  /// configured or yields no relevant memory.
-  Future<ChatMessage?> persistOpenVikingContext({
+  /// 本轮开始：ovCommit 开启时建立 OV session 并抓取用户问题。
+  Future<void> captureUserTurn({
+    required String conversationId,
+    required ChatMessage userMessage,
+    required bool enabled,
+  }) async {
+    if (!enabled) return;
+    try {
+      final ov = contextProvider.read<OpenVikingProvider>();
+      if (!ov.isConfigured || !ov.commit) return;
+      final service = ov.service;
+      if (service == null) return;
+      await service.captureMessages(conversationId, [userMessage]);
+    } catch (_) {}
+  }
+
+  /// 每轮开始：从当前会话历史重建会话内去重记录（回滚后不沿用旧记忆）。
+  void prepareRecallTurn(String conversationId) {
+    try {
+      final ov = contextProvider.read<OpenVikingProvider>();
+      final engine = _engineFor(conversationId, ov);
+      engine?.seed(chatService.getMessages(conversationId));
+    } catch (_) {}
+  }
+
+  /// 追加 skill 名单：首次全量，之后只追加新增项（只追加不重排，保护前缀缓存）。
+  Future<ChatMessage?> appendSkillDeltaInjection({
+    required String conversationId,
+  }) async {
+    if (defaultTargetPlatform != TargetPlatform.android) return null;
+    try {
+      await SkillTool.instance.ensureScanned();
+      final enabled = SkillTool.instance.skills
+          .where((s) => s.enabled)
+          .toList(growable: false);
+      if (enabled.isEmpty) return null;
+
+      final known = <String>{};
+      for (final m in chatService.getMessages(conversationId)) {
+        if (m.role != ChatMessage.roleInjectUser) continue;
+        if (!m.content.contains(Recall.skillMark)) continue;
+        known.addAll(Recall.parseSkillNames(m.content));
+      }
+      final fresh = enabled
+          .where((s) => !known.contains(s.name))
+          .map((s) => (s.name, s.description))
+          .toList(growable: false);
+      if (fresh.isEmpty) return null;
+      final content = Recall.buildSkillMessage(fresh, delta: known.isNotEmpty);
+      return _persistInject(conversationId, content);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 每轮按用户问题召回并落库（inject_user）。
+  Future<ChatMessage?> recallQuestionInjection({
     required String conversationId,
     required String query,
-    bool enabled = false,
+    required bool enabled,
   }) async {
+    if (!enabled) return null;
     try {
-      if (!enabled) return null;
-      final ovProvider = contextProvider.read<OpenVikingProvider>();
-      if (!ovProvider.isConfigured || ovProvider.displayCount <= 0) return null;
-      final userText = query.trim();
-      if (userText.isEmpty) return null;
-      final ovCtx = await ovProvider.service!.loadContext(
-        userText,
-        scoreThreshold: ovProvider.findThreshold,
-        displayCount: ovProvider.findLimit,
-        sessionId: conversationId,
-        dedup: ovProvider.recallDedup,
-      );
-      if (ovCtx.isEmpty) return null;
-      final content = MessageBuilderService.buildOpenVikingInjectionContent(
-        ovCtx,
-      );
-      return chatService.addMessage(
-        conversationId: conversationId,
-        role: 'user',
-        content: content,
+      final ov = contextProvider.read<OpenVikingProvider>();
+      if (!ov.isConfigured || !ov.recallQuestion) return null;
+      final engine = _engineFor(conversationId, ov);
+      if (engine == null) return null;
+      final block = await engine.recall(query);
+      if (block == null) return null;
+      return _persistInject(
+        conversationId,
+        Recall.wrapRecallBlock(block),
       );
     } catch (_) {
       return null;
     }
+  }
+
+  /// 每步召回：只以 LLM 的 reasoning / content 为 query。
+  /// 命中后落库并返回包裹好的注入文本，供 provider 追加到下一轮请求。
+  Future<String?> stepRecallInjection({
+    required String conversationId,
+    required String reasoning,
+    required String content,
+    required bool enabled,
+  }) async {
+    if (!enabled) return null;
+    try {
+      final ov = contextProvider.read<OpenVikingProvider>();
+      if (!ov.isConfigured || !ov.recallStep) return null;
+      final engine = _engineFor(conversationId, ov);
+      if (engine == null) return null;
+      final query = Recall.buildStepQuery(
+        reasoning: reasoning,
+        content: content,
+      );
+      final block = await engine.recall(query);
+      if (block == null) return null;
+      final wrapped = Recall.wrapRecallBlock(block);
+      await _persistInject(conversationId, wrapped);
+      return wrapped;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  RecallEngine? _engineFor(String conversationId, OpenVikingProvider ov) {
+    final service = ov.service;
+    if (service == null) return null;
+    final existing = _recallEngines[conversationId];
+    if (existing != null &&
+        identical(existing.service, service) &&
+        existing.findThreshold == ov.findThreshold &&
+        existing.findLimit == ov.findLimit) {
+      return existing;
+    }
+    final engine = RecallEngine(
+      service: service,
+      findThreshold: ov.findThreshold,
+      findLimit: ov.findLimit,
+    );
+    _recallEngines[conversationId] = engine;
+    return engine;
+  }
+
+  Future<ChatMessage> _persistInject(
+    String conversationId,
+    String content,
+  ) {
+    return chatService.addMessage(
+      conversationId: conversationId,
+      role: ChatMessage.roleInjectUser,
+      content: content,
+    );
   }
 
   /// Build the persisted content string for a user message.
@@ -354,6 +457,7 @@ class MessageGenerationService {
     required bool supportsReasoning,
     required bool enableReasoning,
     required bool generateTitleOnFinish,
+    StepRecallCallback? onStepRecall,
   }) {
     final bool ocrActive =
         settings.ocrEnabled &&
@@ -372,6 +476,7 @@ class MessageGenerationService {
       config: settings.getProviderConfig(providerKey),
       toolDefs: prepared.toolDefs,
       onToolCall: prepared.onToolCall,
+      onStepRecall: onStepRecall,
       extraHeaders: buildConversationRequestHeaders(
         conversationId: assistantMessage.conversationId,
         customHeaders: generationController.buildCustomHeaders(assistant),

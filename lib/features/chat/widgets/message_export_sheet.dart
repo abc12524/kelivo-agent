@@ -18,6 +18,7 @@ import 'image_preview_sheet.dart';
 
 import '../../../icons/lucide_adapter.dart';
 import '../../../core/models/chat_message.dart';
+import '../../../core/services/openviking/recall.dart';
 import '../../../core/models/conversation.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/model_provider.dart';
@@ -477,6 +478,10 @@ Future<void> exportChatMessagesMarkdown(
     buf.writeln('');
 
     for (final msg in messages) {
+      if (msg.role == ChatMessage.roleInjectUser ||
+          Recall.isInjectedContent(msg.content)) {
+        continue;
+      }
       final time = timeFormatter.format(msg.timestamp);
       final roleName = _getRoleNameFromDependencies(
         l10n: l10n,
@@ -589,6 +594,10 @@ Future<void> exportChatMessagesTxt(
     buf.writeln('');
 
     for (final msg in messages) {
+      if (msg.role == ChatMessage.roleInjectUser ||
+          Recall.isInjectedContent(msg.content)) {
+        continue;
+      }
       final time = timeFormatter.format(msg.timestamp);
       final roleName = _getRoleNameFromDependencies(
         l10n: l10n,
@@ -2798,7 +2807,9 @@ class _ExportedChatImage extends StatelessWidget {
                 ),
               ),
               SizedBox(height: isDesktop ? 10.0 : 12.0),
-              for (final m in messages) ...[
+              for (final m in messages)
+                if (m.role != ChatMessage.roleInjectUser &&
+                    !Recall.isInjectedContent(m.content)) ...[
                 _ExportedBubble(
                   message: m,
                   cs: cs,

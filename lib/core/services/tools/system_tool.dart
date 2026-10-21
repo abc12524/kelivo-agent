@@ -23,20 +23,10 @@ class SystemTool extends ToolFamily {
     ),
     SubTool(
       'ssh',
-      'SSH 远程执行命令',
-      'ssh: 参数 host, port, username, command 必填；'
+      'SSH 远程执行与文件传输',
+      'ssh: 参数 action = exec|upload|download（默认 exec）；host, port, username 必填；'
+          'exec 需 command；upload/download 需 local_path, remote_path；'
           '认证传 password 或 private_key / private_key_path（三选一）',
-    ),
-    SubTool(
-      'scp',
-      'SCP 上传/下载文件',
-      'scp: 参数 direction = upload|download, host, port, username, local_path, '
-          'remote_path 必填；认证传 password 或 private_key / private_key_path（三选一）',
-    ),
-    SubTool(
-      'wait',
-      '延时等待',
-      'wait: 参数 duration_ms（毫秒，1000-300000，必填）',
     ),
   ];
 
@@ -69,18 +59,17 @@ class SystemTool extends ToolFamily {
             'action': mode,
           });
         case 'ssh':
-          return DeviceToolsService.execute('ssh_execute', p);
-        case 'scp':
-          final direction = (p['direction'] as String?)?.trim();
-          if (direction == null || direction.isEmpty) {
-            return '{"error": "缺少 direction 参数"}';
+          final action = (p['action'] as String?)?.trim().toLowerCase() ?? '';
+          if (action.isEmpty || action == 'exec') {
+            return DeviceToolsService.execute('ssh_execute', p);
           }
-          return DeviceToolsService.execute('ssh_scp', {
-            ...p,
-            'action': direction,
-          });
-        case 'wait':
-          return DeviceToolsService.execute('wait', p);
+          if (action == 'upload' || action == 'download') {
+            return DeviceToolsService.execute('ssh_scp', {
+              ...p,
+              'action': action,
+            });
+          }
+          return '{"error": "未知 ssh action: $action（可用 exec/upload/download）"}';
         default:
           return unknownSubTool(action);
       }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../../../utils/app_directories.dart';
@@ -60,13 +61,10 @@ class SkillTool extends ToolFamily {
     SubTool('delete', '删除（注销）某个 skill 脚本', 'delete: 需 params.skill = 要删除的 skill 名'),
   ];
 
-  String _registeredNames() =>
-      registeredSkillNames().join(', ').isEmpty ? '(空)' : registeredSkillNames().join(', ');
-
+  // 工具 schema 必须完全静态：不包含任何 skill 名称/说明，避免安装/删除 skill 时破坏前缀缓存。
   @override
   String get description =>
-      '调用已注册的自建 Python 工具（脚本目录 ${_dir?.path ?? 'skills/'}）。'
-      '当前已注册: ${_registeredNames()}。'
+      '调用已注册的自建 Python 工具。'
       '不传 action 返回清单；action=<skill 名> 查看用法；'
       'action=<skill 名> + params 执行；action=delete 删除。';
 
@@ -76,8 +74,7 @@ class SkillTool extends ToolFamily {
     'properties': {
       'action': {
         'type': 'string',
-        'description':
-            'skill 名（当前已注册: ${_registeredNames()}），或管理动作 delete；省略则返回清单',
+        'description': 'skill 名，或管理动作 delete；省略则返回已注册清单',
       },
       'params': {
         'type': 'object',
@@ -347,13 +344,9 @@ class SkillTool extends ToolFamily {
     const overwrite = {
       'assets/skills/skill_runner.py': '_skill_runner.py',
       'assets/skills/skill_envelope.py': '_envelope.py',
-      'assets/skills/_script_impl.py': '_script_impl.py',
     };
     // 普通文件仅在缺失时写入，避免覆盖使用者改动。
-    const ifMissing = {
-      'assets/skills/skill_README.md': 'README.md',
-      'assets/skills/script.py': 'script.py',
-    };
+    const ifMissing = {'assets/skills/skill_README.md': 'README.md'};
 
     for (final e in overwrite.entries) {
       try {
@@ -369,8 +362,30 @@ class SkillTool extends ToolFamily {
         target.writeAsStringSync(content);
       } catch (_) {}
     }
+    _removeRetiredBundledSkills(dir);
     _assetsDeployed = true;
   }
+
+  /// 清理已下线的内置 skill：仅在文件内容与随包版本一致（未被用户改动）时删除，
+  /// 避免误删本地修改。远程仓库仍可安装同名的 script skill。
+  void _removeRetiredBundledSkills(Directory dir) {
+    for (final entry in _retiredBundled.entries) {
+      final file = File('${dir.path}/${entry.key}');
+      if (!file.existsSync()) continue;
+      try {
+        final digest = crypto.sha256.convert(file.readAsBytesSync()).toString();
+        if (digest == entry.value) file.deleteSync();
+      } catch (_) {}
+    }
+  }
+
+  /// 已下线内置 skill 的 SHA-256（内容未变才删除）。
+  static const Map<String, String> _retiredBundled = {
+    'script.py':
+        'a9b123eb54d82de5012e48b0a41f557ae1dc57ade46c5637230a54506a8a07a3',
+    '_script_impl.py':
+        '45f051c97dae96260bf53b216b40a967b0fd89b8d81d19877c02fe926f28937c',
+  };
 
   // ---- 头部解析（容忍重复/粘连的 skill·status 行，重复块后者覆盖）----
 

@@ -1325,6 +1325,7 @@ class GenerationContext {
     required this.config,
     required this.toolDefs,
     this.onToolCall,
+    this.onStepRecall,
     this.extraHeaders,
     this.extraBody,
     required this.supportsReasoning,
@@ -1345,6 +1346,7 @@ class GenerationContext {
   final ProviderConfig config;
   final List<Map<String, dynamic>> toolDefs;
   final ToolCallHandler? onToolCall;
+  final StepRecallCallback? onStepRecall;
   final Map<String, String>? extraHeaders;
   final Map<String, dynamic>? extraBody;
   final bool supportsReasoning;
