@@ -29,15 +29,16 @@ class PhoneTool extends ToolFamily {
     ),
     SubTool(
       'sensor',
-      '读取传感器数据',
-      'sensor: 可选参数 sensor（默认 all）。可传关键字（gyroscope/accelerometer/magnetic/'
-          'light/pressure/proximity/gravity/linear_acceleration/rotation）或 all',
+      '读取传感器数据；可选 sensor = gyroscope/accelerometer/magnetic/light/'
+          'pressure/proximity/gravity/linear_acceleration/rotation；默认 all',
+      'sensor: 可选参数 sensor（默认 all）；可选值见清单',
       requiresParams: false,
     ),
   ];
 
   @override
-  String get description => '手机功能。子工具：${subsBrief(subs)}。';
+  String get description =>
+      '手机功能。子工具：${subs.map((s) => s.name).join(' / ')}。';
 
   @override
   Future<String> execute(Map<String, dynamic> args) => dispatchFamily(

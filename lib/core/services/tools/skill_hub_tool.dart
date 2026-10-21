@@ -67,10 +67,7 @@ class SkillHubTool extends ToolFamily {
 
   @override
   String get description =>
-      '远程技能仓库（GitHub / Gitea）。子工具：list / install / disable / enable / remove。'
-      'list 查看可装技能；install + params{name} 下载安装；'
-      'disable 对 LLM 隐藏；enable 重新启用；remove 直接删除。'
-      '下载即信任其代码（会在进程内执行）。仓库地址可在「Skill 管理」页修改。';
+      '远程技能仓库（GitHub / Gitea）。子工具：list / install / disable / enable / remove。';
 
   @override
   Future<String> execute(Map<String, dynamic> args) async {
