@@ -28,6 +28,9 @@ object PythonManager {
     private const val ASSET_CA = "ca_bundle.crt"
     private const val PYTHON_DIR = "python"
 
+    /** pip 默认镜像源：中科大（USTC）。可经 python(mode=pip) 的 index_url 覆盖并持久化。 */
+    private const val DEFAULT_PIP_INDEX = "https://mirrors.ustc.edu.cn/pypi/simple"
+
     @Volatile
     var status: InitStatus = InitStatus.NOT_STARTED
         private set
@@ -256,13 +259,26 @@ object PythonManager {
         return runPython(listOf(scriptPath) + args, timeoutSec)
     }
 
-    fun pipInstall(packages: String, timeoutSec: Int = 180): ProcessResult {
+    fun pipInstall(
+        packages: String,
+        indexUrl: String = DEFAULT_PIP_INDEX,
+        timeoutSec: Int = 180
+    ): ProcessResult {
         val pkgList = packages.trim().split("\\s+".toRegex())
             .filter { it.isNotBlank() }
             .map { it.trim() }
-        val args = listOf("-m", "pip", "install", "-i",
-            "https://pypi.tuna.tsinghua.edu.cn/simple",
-            "--trusted-host", "pypi.tuna.tsinghua.edu.cn") + pkgList
+        val index = indexUrl.trim().ifEmpty { DEFAULT_PIP_INDEX }
+        val args = mutableListOf("-m", "pip", "install", "-i", index)
+        // 仅 http 源需要 trusted-host；https 源交给 CA 证书校验，不静默跳过校验
+        if (index.startsWith("http://")) {
+            val host = try {
+                java.net.URI(index).host ?: ""
+            } catch (_: Exception) {
+                ""
+            }
+            if (host.isNotEmpty()) args += listOf("--trusted-host", host)
+        }
+        args += pkgList
         return runPython(args, timeoutSec)
     }
 

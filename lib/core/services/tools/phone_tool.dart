@@ -16,7 +16,11 @@ class PhoneTool extends ToolFamily {
   final List<SubTool> subs = const [
     SubTool('system_info', '设备系统信息', 'system_info: 无参数', requiresParams: false),
     SubTool('gps', '获取当前定位', 'gps: 无参数', requiresParams: false),
-    SubTool('notify', '发送状态栏通知', 'notify: 参数 title, content 必填'),
+    SubTool(
+      'notify',
+      '发送状态栏通知',
+      'notify: 参数 title, content 必填；可选 priority = low|default|high|max',
+    ),
     SubTool(
       'sound',
       '播放提示音/远程音频',
@@ -33,8 +37,7 @@ class PhoneTool extends ToolFamily {
   ];
 
   @override
-  String get description =>
-      '手机功能。子工具：${subs.map((s) => s.name).join(' / ')}。';
+  String get description => '手机功能。子工具：${subsBrief(subs)}。';
 
   @override
   Future<String> execute(Map<String, dynamic> args) => dispatchFamily(
@@ -56,7 +59,7 @@ class PhoneTool extends ToolFamily {
             'sensor': p['sensor'] ?? 'all',
           });
         default:
-          return unknownSubTool(action);
+          return unknownSubTool(name, action, subs);
       }
     },
   );

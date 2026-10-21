@@ -97,7 +97,8 @@ class MainActivity : FlutterActivity() {
                                 result.success(json.toString())
                             }
                             "pip" -> {
-                                val pyResult = PythonManager.pipInstall(packages)
+                                val indexUrl = args?.get("index_url") as? String ?: ""
+                                val pyResult = PythonManager.pipInstall(packages, indexUrl)
                                 val json = JSONObject()
                                 json.put("success", pyResult.success)
                                 json.put("output", pyResult.output)
