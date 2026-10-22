@@ -102,15 +102,6 @@ class DeviceToolsService {
         },
         ["action"],
       ),
-      _def(
-        "wait",
-        "Wait for a specified duration in milliseconds, useful for pausing AI execution when waiting for other tasks to complete.",
-        {
-          "duration_ms": {"type": "integer", "description": "Wait duration in milliseconds, range 1000–300000 (1s–5min)"},
-        },
-        ["duration_ms"],
-      ),
-
     ];
   }
 

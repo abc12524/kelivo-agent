@@ -2,16 +2,15 @@
 # -*- coding: utf-8 -*-
 """android-agent skill runner —— 已注册 skill 的调用入口（不负责创建）。
 
-扫描本目录下的 skill 脚本自动注册，支持两种布局（可混用）：
+扫描本目录下的技能目录自动注册（每个技能一个目录）：
 
-    扁平:   skills/<名称>.py            （模块名 <名称>）
-    文件夹: skills/<名称>/skill.py      （入口、助手、配置同目录；相对导入可用）
+    skills/<名称>/skill.py      （入口、助手、配置同目录；相对导入可用）
 
 脚本定义 ``run(arguments) -> (str | dict)``，返回统一信封
 ``{"status": "ok", "result": {...}}`` / ``{"status": "error", ...}``。
-``_`` 开头的文件/目录不参与注册。脚本的编写规范见同目录 README.md。
+``_`` 开头的目录不参与注册。脚本的编写规范见同目录 README.md。
 
-本文件由 Kotlin 侧 SkillTool 调用，每次调用都是一个全新进程：
+本文件由 Dart 侧 SkillTool 调用（经 execute_python 起进程），每次调用都是一个全新进程：
 
     <python> _skill_runner.py <request.json>
 
@@ -128,11 +127,10 @@ def _parse_header(path):
 
 
 def _iter_entries():
-    """枚举 skill 入口文件，产出 (entry_path, folder)。
+    """枚举技能入口文件，产出 (entry_path, folder)。
 
-    - 扁平:  skill/<名>.py         → (path, None)
     - 文件夹: skill/<名>/skill.py   → (path, <folder>)（入口、助手、配置同目录）
-    `_` / `.` 开头的文件或目录一律跳过。
+    `_` / `.` 开头的目录一律跳过；根目录下的散落文件不参与注册。
     """
     if not os.path.isdir(SKILL_DIR):
         return
@@ -140,16 +138,14 @@ def _iter_entries():
         if fn.startswith("_") or fn.startswith("."):
             continue
         full = os.path.join(SKILL_DIR, fn)
-        if os.path.isfile(full) and fn.endswith(".py"):
-            yield full, None
-        elif os.path.isdir(full):
+        if os.path.isdir(full):
             entry = os.path.join(full, "skill.py")
             if os.path.isfile(entry):
                 yield entry, full
 
 
 def scan():
-    """扫描 SKILL_DIR（扁平 + 文件夹），返回 name -> meta。"""
+    """扫描 SKILL_DIR（每个技能一个目录），返回 name -> meta。"""
     registry = {}
     for entry, folder in _iter_entries():
         meta = _parse_header(entry)
@@ -263,12 +259,9 @@ def act_delete(skill):
     name = (skill or "").strip()
     if not _NAME_RE.match(name):
         return error("非法 skill 名称", code="invalid_name")
-    flat = os.path.join(SKILL_DIR, name + ".py")
     folder = os.path.join(SKILL_DIR, name)
     try:
-        if os.path.isfile(flat):
-            os.remove(flat)
-        elif os.path.isdir(folder):
+        if os.path.isdir(folder):
             shutil.rmtree(folder)
         else:
             return error("skill '%s' 不存在" % name, code="not_found")

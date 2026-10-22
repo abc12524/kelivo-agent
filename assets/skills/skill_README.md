@@ -1,28 +1,36 @@
 # kelivo-agent skill 说明文档
 
-本目录（`filesDir/skills/`）存放 **skill（自建 Python 工具）**。每个 `*.py` 脚本即一个
-可被 LLM 调用的工具；`skill` 工具会扫描本目录并按脚本头部**自动注册**：
-**放入脚本即自动生效，删除脚本即自动注销，无需改核心代码。**
+本目录（`filesDir/skills/`）存放 **skill（自建 Python 工具）**。每个技能是一个子目录，
+入口固定为 `skills/<名称>/skill.py`；`skill` 工具会扫描本目录并按入口文件头部**自动注册**：
+**建好目录即自动生效，删除目录即自动注销，无需改核心代码。**
 
-> 以 `_` 开头的文件（如 `_skill_runner.py`、`_envelope.py`）是运行时内部文件，不会被注册。
+> 根目录下的 `_skill_runner.py`、`_envelope.py` 是运行时内部文件，不会被注册；以 `_` 或 `.`
+> 开头的目录同样跳过。
 
-`skill` 工具只负责**调用**已注册的 skill（以及 `delete` 注销），不再负责创建脚本。
-新增 skill 的方式是把脚本文件写进本目录，或用 `skill_hub` 工具从远程仓库下载安装。
+`skill` 工具只负责**调用**已注册的 skill（以及 `delete` 注销），不负责创建脚本。
+新增 skill 的方式是建目录并写入 `skill.py`，或用 `skill_hub` 工具从远程仓库下载安装。
 
-## 两种布局（可混用）
+## 目录结构
 
-- **扁平**：`skills/<名称>.py` —— 单文件即可，最简单。
-- **文件夹**：`skills/<名称>/skill.py`（入口）—— 可把助手模块（`_` 开头，入口用相对导入
-  `from ._helper import ...` 引用）与配置文件（`config.json`，模板同目录 `config.example.json`）
-  放在一起；适合逻辑复杂或需要密钥的技能。
+```
+skills/
+  <名称>/
+    skill.py            # 入口（必需）：头部元信息 + run(arguments)
+    _helper.py          # 可选：助手模块，入口用 from ._helper import ... 引用
+    config.json         # 可选：配置，模板同目录 config.example.json
+```
 
-两种布局都按**入口文件**头部自动注册；以 `_` 或 `.` 开头的文件/目录不参与注册。
+- 目录名即技能名，必须与头部 `# skill:` 一致（`delete` 按名字找目录）。
+- `_` 前缀的助手模块不会被误注册成独立技能。
+- 只扫描一层：`skills/a/skill.py` 有效，`skills/a/b/skill.py` 不会被发现。
+- 根目录下直接放 `*.py` 不再被识别，必须放进子目录。
 
 ## 目录与运行环境
 
 - 运行 Python：应用内置的 **Python 3.13**（完整标准库 + pip，清华源）。可用 `system_tool` 的
   `python`（`mode=pip`）安装第三方包（如 `requests`）。
-- 脚本工作目录即本目录，可直接 `import` 同目录下的其他脚本或 `_envelope`。
+- 运行时 `sys.path` 包含 `skills/` 根目录，所以 `import _envelope` 可直接用；技能目录内的助手
+  模块请用相对导入 `from ._helper import ...`。
 - 执行方式：`skill` 工具的调用会在独立进程中导入脚本并调用 `run(arguments)`。
 
 ## 如何编写一个 skill

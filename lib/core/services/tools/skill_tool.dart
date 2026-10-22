@@ -29,10 +29,9 @@ class SkillMeta {
 
 /// 工具族：skill —— 调用已注册的自建 Python 工具（不负责创建）。
 ///
-/// 复刻 android-agent 的 skill 机制：`skills/` 目录下的脚本按头部元信息
-/// （`# skill` / `# description` / `# status` / `# usage`）自动注册，支持两种布局
-/// （可混用）：扁平 `skills/<名>.py`；文件夹 `skills/<名>/skill.py`（入口、`_` 助手、
-/// `config.json` 同目录）。新增即生效、删除即注销，`_`/`.` 开头不参与注册。
+/// 复刻 android-agent 的 skill 机制：`skills/<名>/skill.py` 按头部元信息
+/// （`# skill` / `# description` / `# status` / `# usage`）自动注册；入口同目录可放
+/// `_` 助手模块与 `config.json`。新增即生效、删除即注销，`_`/`.` 开头的目录不参与扫描。
 /// 与内置工具族一样按「两段式」披露：
 ///
 ///   - 不传 action                    → 返回已注册 skill 清单（名称 + 简短说明）；
@@ -45,7 +44,8 @@ class SkillTool extends ToolFamily {
   SkillTool._();
   static final SkillTool instance = SkillTool._();
 
-  /// skills 目录（AppData/skills）；`*.py` 会被自动注册（`_` 开头的除外）。
+  /// skills 目录（AppData/skills）；每个子目录的 `skill.py` 会被自动注册
+  /// （`_` / `.` 开头的目录除外）。
   Directory? _dir;
 
   /// 注册缓存：用「文件名 + 修改时间 + 大小」做签名，签名未变则复用。
@@ -100,19 +100,16 @@ class SkillTool extends ToolFamily {
     final dir = await _skillsDir();
     await _deployAssets(dir);
 
-    // 两种布局：扁平 skills/<名>.py；文件夹 skills/<名>/skill.py（入口）
+    // 每个技能是一个目录：skills/<名>/skill.py 为入口
     final entries = <File>[];
     final children = dir.listSync()
       ..sort((a, b) => a.path.compareTo(b.path));
     for (final e in children) {
+      if (e is! Directory) continue;
       final seg = e.uri.pathSegments.last;
       if (seg.startsWith('_') || seg.startsWith('.')) continue;
-      if (e is File && seg.endsWith('.py')) {
-        entries.add(e);
-      } else if (e is Directory) {
-        final entry = File('${e.path}/skill.py');
-        if (entry.existsSync()) entries.add(entry);
-      }
+      final entry = File('${e.path}/skill.py');
+      if (entry.existsSync()) entries.add(entry);
     }
 
     final signature = entries
@@ -263,12 +260,9 @@ class SkillTool extends ToolFamily {
     if (dir == null || !_nameRe.hasMatch(skill)) {
       return jsonEncode({'status': 'error', 'error': '非法 skill 名称'});
     }
-    final flat = File('${dir.path}/$skill.py');
     final folder = Directory('${dir.path}/$skill');
     try {
-      if (flat.existsSync()) {
-        flat.deleteSync();
-      } else if (folder.existsSync()) {
+      if (folder.existsSync()) {
         folder.deleteSync(recursive: true);
       } else {
         return jsonEncode({'status': 'error', 'error': "skill '$skill' 不存在"});

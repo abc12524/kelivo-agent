@@ -19,7 +19,6 @@ class ToolsPlugin(private val ctx: Context) {
             "ssh_scp" to SCPTool(),
             "send_notification" to NotificationTool(),
             "play_sound" to SoundTool(),
-            "wait" to WaitTool(),
         )
     }
 

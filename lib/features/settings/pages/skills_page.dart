@@ -7,10 +7,11 @@ import '../../../core/services/tools/skill_hub_tool.dart';
 import '../../../core/services/tools/skill_tool.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/ios_switch.dart';
 import 'package:Kelivo/theme/app_font_weights.dart';
 
-/// skill 管理页：列出 skills/ 目录下自动注册的自建 Python 工具（查看用法 / 删除），
-/// 并可从远程技能仓库查看 / 下载 / 下线 skill（仅 Android，依赖内置 Python）。
+/// skill 管理页：列出 skills/ 目录下自动注册的自建 Python 工具（查看名称与说明 /
+/// 下线 / 删除），并可从远程技能仓库查看 / 下载 / 下线 skill（仅 Android，依赖内置 Python）。
 class SkillsPage extends StatefulWidget {
   const SkillsPage({super.key});
   @override
@@ -265,7 +266,7 @@ class _SkillsPageState extends State<SkillsPage> {
                 _hintText(cs, '脚本目录：${SkillTool.instance.directoryPath ?? 'skills/'}'),
                 const SizedBox(height: 8),
                 if (_skills.isEmpty)
-                  _hintText(cs, '暂无已注册 skill。把脚本放入脚本目录即自动注册。')
+                  _hintText(cs, '暂无已注册 skill。在脚本目录下新建 <名称>/skill.py 即自动注册。')
                 else
                   for (final s in _skills) _skillCard(cs, s),
                 const SizedBox(height: 24),
@@ -432,29 +433,16 @@ class _SkillsPageState extends State<SkillsPage> {
                       ),
                     ),
                   ),
-                if (s.usage.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      s.usage,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: cs.onSurface.withValues(alpha: 0.55),
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                tooltip: s.enabled
-                    ? l10n.skillsPageHideTooltip
-                    : l10n.skillsPageUnhideTooltip,
-                icon: Icon(s.enabled ? Lucide.EyeOff : Lucide.Eye),
-                onPressed: () => _toggleHide(s),
+              IosSwitch(
+                value: s.enabled,
+                semanticLabel: s.name,
+                onChanged: (_) => _toggleHide(s),
               ),
               IconButton(
                 icon: const Icon(Lucide.Trash2),

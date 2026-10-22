@@ -287,15 +287,12 @@ class SkillHubTool extends ToolFamily {
     }
 
     final dest = Directory('${dir.path}/$name');
-    final overwrite =
-        dest.existsSync() || File('${dir.path}/$name.py').existsSync();
+    final overwrite = dest.existsSync();
     // 覆盖安装：备份本地 config.json（若有），避免被模板重置
     final configFile = File('${dest.path}/config.json');
     final savedConfig =
         configFile.existsSync() ? configFile.readAsBytesSync() : null;
     if (dest.existsSync()) dest.deleteSync(recursive: true);
-    final flat = File('${dir.path}/$name.py');
-    if (flat.existsSync()) flat.deleteSync(); // 清掉同名扁平脚本，避免并存
     try {
       tmp.renameSync(dest.path);
     } catch (_) {
@@ -374,13 +371,16 @@ class SkillHubTool extends ToolFamily {
     }
     try {
       final folder = Directory('${dir.path}/$name');
-      final flat = File('${dir.path}/$name.py');
       if (folder.existsSync()) {
         folder.deleteSync(recursive: true);
-      } else if (flat.existsSync()) {
-        flat.deleteSync();
       } else {
-        entry.deleteSync();
+        // 头部名与目录名不一致：按入口所在目录卸载
+        final owner = entry.parent;
+        if (owner.path == dir.path) {
+          entry.deleteSync();
+        } else {
+          owner.deleteSync(recursive: true);
+        }
       }
     } catch (e) {
       return jsonEncode({'status': 'error', 'error': '删除失败: $e'});
@@ -399,25 +399,18 @@ class SkillHubTool extends ToolFamily {
     return Directory('${root.path}/skills');
   }
 
-  /// 定位技能的入口文件：文件夹式 <name>/skill.py → 扁平 <name>.py → 按头部名匹配。
+  /// 定位技能的入口文件：<name>/skill.py → 按头部名匹配。
   File? _findEntryFile(Directory dir, String name) {
     final folderEntry = File('${dir.path}/$name/skill.py');
     if (folderEntry.existsSync()) return folderEntry;
-    final flat = File('${dir.path}/$name.py');
-    if (flat.existsSync()) return flat;
     if (!dir.existsSync()) return null;
     for (final e in dir.listSync()) {
       final seg = e.uri.pathSegments.last;
       if (seg.startsWith('_') || seg.startsWith('.')) continue;
-      File? entry;
-      if (e is Directory) {
-        final f = File('${e.path}/skill.py');
-        if (f.existsSync()) entry = f;
-      } else if (e is File && seg.endsWith('.py')) {
-        entry = e;
-      }
-      if (entry == null) continue;
-      if (_headerSkillName(entry) == name) return entry;
+      if (e is! Directory) continue;
+      final f = File('${e.path}/skill.py');
+      if (!f.existsSync()) continue;
+      if (_headerSkillName(f) == name) return f;
     }
     return null;
   }

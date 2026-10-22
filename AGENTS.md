@@ -73,9 +73,9 @@
 
 ## 3. Mandatory Rules
 
-### 3.1 All User-Visible Text Must Be Localized
+### 3.1 User-Visible Text Must Be Localized (Legacy Pages Exempt)
 
-- No user-visible text may be hardcoded in Dart UI code. This includes but is not limited to:
+- Rule: user-visible text goes through `AppLocalizations`, never hardcoded in Dart UI code. This includes but is not limited to:
   - Page titles
   - Button labels
   - `SnackBar` / `Dialog` / `Tooltip` content
@@ -98,6 +98,15 @@ flutter gen-l10n
 
 - Never hand-edit `lib/l10n/app_localizations.dart` or `lib/l10n/app_localizations_*.dart`.
 - `desiredFileName.txt` is the untranslated messages file. Do not introduce new untranslated entries. If you add a key, provide translations for all languages in the same change.
+
+#### 3.1.1 Legacy-hardcoded exemption
+
+- A page/section that is still fully hardcoded is exempt: keep its existing hardcoded strings, and fixing their wording does not require ARB changes or `gen-l10n`.
+- The exemption is per page and covers only text that is already hardcoded there. Text added to a page that is otherwise localized is NOT covered.
+- Do not migrate an exempt page as a side effect of an unrelated task; migration is its own task.
+- Exempt pages (keep this list accurate):
+  - `lib/features/settings/pages/skills_page.dart` — only `skillsPageHiddenLabel` / `skillsPageHideTooltip` / `skillsPageUnhideTooltip` are localized; all other strings are hardcoded Chinese.
+- When an exempt page is migrated, remove its entry here in the same change. Do not add new entries without explicit user approval.
 
 ### 3.2 Generated Code Must Be Maintained Via Commands
 
@@ -228,9 +237,9 @@ dart format <changed-paths>
 
 ## 5. Pre-Commit Checklist
 
-- All new user-visible text uses `AppLocalizations`.
-- All 4 ARB files have been updated in sync.
-- `flutter gen-l10n` has been executed and generated files match ARB content.
+- All new user-visible text uses `AppLocalizations`, except text on pages listed as legacy-hardcoded in §3.1.1.
+- All 4 ARB files have been updated in sync (only when ARB changes were needed).
+- `flutter gen-l10n` has been executed and generated files match ARB content (only when ARB changes were needed).
 - If Hive models were touched, `build_runner` has been executed.
 - `dart format` has been executed.
 - Desktop tasks have confirmed the entry layer. No desktop-only logic leaked into mobile branches.
