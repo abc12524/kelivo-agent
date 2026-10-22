@@ -532,18 +532,12 @@ class _SkillsPageState extends State<SkillsPage> {
                     tooltip: '安装',
                     icon: const Icon(Lucide.Download),
                     onPressed: () => _install(name),
-                  ),
-                if (installed && !enabled)
-                  IconButton(
-                    tooltip: '重新启用',
-                    icon: const Icon(Lucide.Download),
-                    onPressed: () => _setEnabled(name, true),
-                  ),
-                if (installed && enabled)
-                  IconButton(
-                    tooltip: '下线（保留文件）',
-                    icon: const Icon(Lucide.EyeOff),
-                    onPressed: () => _setEnabled(name, false),
+                  )
+                else
+                  IosSwitch(
+                    value: enabled,
+                    semanticLabel: name,
+                    onChanged: (v) => _setEnabled(name, v),
                   ),
                 if (installed)
                   IconButton(
