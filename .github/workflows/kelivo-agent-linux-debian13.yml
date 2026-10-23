@@ -69,6 +69,17 @@ jobs:
             dpkg -s kelivo | sed -n "1,12p"
             test -x /usr/bin/kelivo
             test -f /usr/share/applications/kelivo.desktop
+            missing=$(for f in /opt/kelivo/kelivo /opt/kelivo/lib/*.so*; do
+              LD_LIBRARY_PATH=/opt/kelivo/lib ldd "$f" 2>/dev/null \
+                | grep "not found" \
+                | sed "s|^|${f}: |" || true
+            done)
+            if [ -n "$missing" ]; then
+              echo "❌ 存在未解析的动态库："
+              echo "$missing"
+              exit 1
+            fi
+            echo "✅ 动态库依赖完整"
           '
 
       - name: 📤 上传构建产物 (DEB)

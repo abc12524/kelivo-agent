@@ -60,15 +60,18 @@ StartupWMClass=kelivo
 Keywords=LLM;Chat;AI;
 EOF
 
-# 运行时依赖：按 ldd 反查 Debian 13 包名，避免手写 libgtk3 t64 等命名差异
-mapfile -t DEP_PKGS < <(
+# 运行时依赖：ldd 取 soname，再用 dpkg 通配匹配。
+# 注意 Debian 13 的 ldd 输出 /lib，而 dpkg 文件清单记录 /usr/lib，按路径直接查会全部 miss。
+mapfile -t SONAMES < <(
   for bin in "$PKG/opt/kelivo/kelivo" "$PKG"/opt/kelivo/lib/*.so*; do
     [ -f "$bin" ] || continue
     ldd "$bin" 2>/dev/null || true
+  done | awk '/=>/ {print $1}' | sort -u
+)
+mapfile -t DEP_PKGS < <(
+  for so in "${SONAMES[@]}"; do
+    dpkg -S "*/$so" 2>/dev/null || true
   done \
-    | awk '/=> \// {print $3}' \
-    | sort -u \
-    | xargs -r dpkg -S 2>/dev/null \
     | cut -d: -f1 \
     | tr ',' '\n' \
     | sed 's/^ *//' \
@@ -78,6 +81,8 @@ mapfile -t DEP_PKGS < <(
 )
 DEPENDS=$(IFS=,; echo "${DEP_PKGS[*]}")
 DEPENDS="${DEPENDS:-libgtk-3-0t64 | libgtk-3-0, libc6}"
+
+echo "运行时依赖: ${DEPENDS}"
 
 cat > "$PKG/DEBIAN/control" <<EOF
 Package: kelivo
