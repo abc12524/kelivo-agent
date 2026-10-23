@@ -1,0 +1,188 @@
+name: Build Kelivo Agent Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: '发布到 Release'
+        required: false
+        default: false
+        type: boolean
+      release_tag:
+        description: 'Release 标签（发布时必填，如 v1.1.90）'
+        required: false
+        default: ''
+        type: string
+      prerelease:
+        description: '是否为预发布版本 (Pre-release)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: '3.44.x'
+  VERSION: 1.2.${{ github.run_number }}
+
+jobs:
+  # Windows 构建（复用 build-stable-44.yml 的 Windows 作业）
+  windows:
+    name: 构建 Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: 📦 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔧 安装最新 CMake
+        uses: lukka/get-cmake@latest
+
+      - name: 🐦 安装 Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: 📝 Inject fallback
+        shell: bash
+        run: |
+          mkdir -p lib/secrets
+          cat > lib/secrets/fallback.dart <<'EOF'
+          const String siliconflowFallbackKey = '${{ secrets.SILICONFLOW_KEY }}';
+          EOF
+
+      - name: 🔧 获取依赖
+        run: flutter pub get
+
+      - name: 🔍 验证 CMake 版本
+        shell: pwsh
+        run: |
+          Write-Host "检查 CMake 版本..."
+          cmake --version
+          $cmakeVersion = (cmake --version | Select-String "cmake version" | ForEach-Object { $_.ToString() })
+          Write-Host "当前 CMake: $cmakeVersion"
+
+      - name: 📝 自动递增版本号
+        shell: bash
+        run: |
+          sed -i "s/^version: .*/version: ${VERSION}/" pubspec.yaml
+          echo "版本号: ${VERSION}（CI 运行号 ${{ github.run_number }}）"
+
+      - name: 🏗️ 构建 Windows
+        run: flutter build windows --release
+
+      - name: 📦 打包 ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "build/windows/x64/runner/Release/*" -DestinationPath "Kelivo_windows_$env:VERSION.zip"
+
+      - name: 🔧 安装 Inno Setup
+        run: choco install innosetup -y
+
+      - name: 📦 创建安装程序
+        shell: pwsh
+        run: |
+          # 语言文件检测（中文语言包在部分 Runner 缺失，避免编译失败）
+          $zhLangCompiler = "C:\\Program Files (x86)\\Inno Setup 6\\Languages\\ChineseSimplified.isl"
+          $zhLangLocalDir = Join-Path (Get-Location) "Languages"
+          $zhLangLocal = Join-Path $zhLangLocalDir "ChineseSimplified.isl"
+          $languagesBlock = $null
+          if (Test-Path $zhLangCompiler) {
+            Write-Host "✅ 检测到中文语言文件: $zhLangCompiler"
+            $languagesBlock = @"
+          [Languages]
+          Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+          Name: "english"; MessagesFile: "compiler:Default.isl"
+          "@
+          } else {
+            Write-Host "⚠️ 未在 Inno Setup 安装目录找到中文语言文件，尝试下载到本地项目..."
+            try {
+              New-Item -ItemType Directory -Force -Path $zhLangLocalDir | Out-Null
+              $uri = 'https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/ChineseSimplified.isl'
+              Invoke-WebRequest -Uri $uri -OutFile $zhLangLocal -UseBasicParsing -TimeoutSec 60
+              if (Test-Path $zhLangLocal) {
+                Write-Host "✅ 已下载中文语言文件: $zhLangLocal"
+                $languagesBlock = @"
+          [Languages]
+          Name: "chinesesimplified"; MessagesFile: "$zhLangLocal"
+          Name: "english"; MessagesFile: "compiler:Default.isl"
+          "@
+              }
+            } catch {
+              Write-Host "⚠️ 下载中文语言文件失败: $($_.Exception.Message)"
+            }
+            if (-not $languagesBlock) {
+              Write-Host "ℹ️ 将仅包含英文安装向导"
+              $languagesBlock = @"
+          [Languages]
+          Name: "english"; MessagesFile: "compiler:Default.isl"
+          "@
+            }
+          }
+          # 创建 Inno Setup 脚本
+          $issContent = @"
+          #define MyAppName "Kelivo"
+          #define MyAppVersion "$env:VERSION"
+          #define MyAppPublisher "Psyche"
+          #define MyAppExeName "kelivo.exe"
+          [Setup]
+          AppId={{A7B8C9D0-E1F2-4A5B-8C9D-0E1F2A3B4C5D}}
+          AppName={#MyAppName}
+          AppVersion={#MyAppVersion}
+          AppPublisher={#MyAppPublisher}
+          DefaultDirName={autopf}\{#MyAppName}
+          DefaultGroupName={#MyAppName}
+          OutputDir=.
+          OutputBaseFilename=Kelivo_windows_{#MyAppVersion}_setup
+          Compression=lzma2
+          SolidCompression=yes
+          WizardStyle=modern
+          ArchitecturesInstallIn64BitMode=x64
+          ArchitecturesAllowed=x64
+          UninstallDisplayIcon={app}\{#MyAppExeName}
+          $languagesBlock
+          [Tasks]
+          Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加图标:"
+          [Files]
+          Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+          [Icons]
+          Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+          Name: "{group}\卸载 {#MyAppName}"; Filename: "{uninstallexe}"
+          Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+          [Run]
+          Filename: "{app}\{#MyAppExeName}"; Description: "启动 {#MyAppName}"; Flags: nowait postinstall skipifsilent
+          "@
+
+          # 使用 UTF-8 BOM 以确保中文字符在 Inno Setup 中正确解析
+          $issContent | Out-File -FilePath "installer.iss" -Encoding utf8BOM
+
+          # 编译安装程序
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer.iss"
+
+      - name: 🚀 发布到 Release
+        if: ${{ github.event.inputs.publish_release == 'true' && github.event.inputs.release_tag != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.release_tag }}
+          name: ${{ github.event.inputs.release_tag }}
+          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+          files: |
+            Kelivo_windows_*.zip
+            Kelivo_windows_*_setup.exe
+
+      - name: 📤 上传构建产物 (ZIP)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-ZIP
+          path: Kelivo_windows_*.zip
+
+      - name: 📤 上传构建产物 (Installer)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-Installer
+          path: Kelivo_windows_*_setup.exe
