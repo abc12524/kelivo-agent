@@ -538,10 +538,9 @@ class _MarkdownWithCodeHighlightState extends State<MarkdownWithCodeHighlight> {
 }
 
 String _displayLanguage(BuildContext context, String? raw) {
-  final zh = _isZh(context);
   final t = raw?.trim();
   if (t != null && t.isNotEmpty) return t;
-  return zh ? '代码' : 'Code';
+  return AppLocalizations.of(context)!.markdownCodeLabel;
 }
 
 bool _isZh(BuildContext context) =>

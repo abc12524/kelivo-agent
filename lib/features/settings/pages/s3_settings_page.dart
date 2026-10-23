@@ -99,7 +99,7 @@ class _S3SettingsPageState extends State<S3SettingsPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         children: [
-          _sectionHeader('连接设置', cs),
+          _sectionHeader(l10n.s3PageConnectionSection, cs),
           _sectionCard(
             cs,
             children: [
@@ -146,7 +146,7 @@ class _S3SettingsPageState extends State<S3SettingsPage> {
                     foregroundColor: cs.primary,
                   ),
                   onPressed: () => setState(() => _showSecret = !_showSecret),
-                  child: Text(_showSecret ? '隐藏' : '显示'),
+                  child: Text(_showSecret ? l10n.s3PageHideSecret : l10n.s3PageShowSecret),
                 ),
               ),
             ],

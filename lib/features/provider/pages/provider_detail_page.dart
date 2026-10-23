@@ -870,13 +870,13 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '革命性竞价 AI MaaS 平台，价格由市场供需决定，告别高成本固定定价。',
+                  AppLocalizations.of(context)!.providerSiliconflowPromo,
                   style: TextStyle(color: cs.onSurface.withValues(alpha: 0.8)),
                 ),
                 const SizedBox(height: 6),
                 Text.rich(
                   TextSpan(
-                    text: '官网：',
+                    text: AppLocalizations.of(context)!.providerOfficialSiteLabel,
                     style: TextStyle(
                       color: cs.onSurface.withValues(alpha: 0.8),
                     ),
@@ -925,13 +925,13 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '已内置硅基流动的免费模型，无需 API Key。若需更强大的模型，请申请并在此配置你自己的 API Key。',
+                  AppLocalizations.of(context)!.providerSiliconflowBuiltinNote,
                   style: TextStyle(color: cs.onSurface.withValues(alpha: 0.8)),
                 ),
                 const SizedBox(height: 6),
                 Text.rich(
                   TextSpan(
-                    text: '官网：',
+                    text: AppLocalizations.of(context)!.providerOfficialSiteLabel,
                     style: TextStyle(
                       color: cs.onSurface.withValues(alpha: 0.8),
                     ),

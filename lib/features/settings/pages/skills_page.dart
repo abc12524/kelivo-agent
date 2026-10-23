@@ -77,8 +77,9 @@ class _SkillsPageState extends State<SkillsPage> {
     await SkillHubStore.setType(_typeCtrl.text);
     await SkillHubStore.setBase(_baseCtrl.text);
     await SkillHubStore.setToken(_tokenCtrl.text);
-    if (mounted) setState(() => _savingCfg = false);
-    _snack('已保存仓库配置');
+    if (!mounted) return;
+    setState(() => _savingCfg = false);
+    _snack(AppLocalizations.of(context)!.skillsPageSaveConfigSaved);
   }
 
   Future<void> _refresh() async {
@@ -109,7 +110,7 @@ class _SkillsPageState extends State<SkillsPage> {
           _remoteLoading = false;
         });
       } else {
-        final err = (m is Map ? m['error'] : null)?.toString() ?? '未知错误';
+        final err = (m is Map ? m['error'] : null)?.toString() ?? AppLocalizations.of(context)!.skillsPageUnknownError;
         setState(() {
           _remoteError = err;
           _remoteLoading = false;
@@ -131,7 +132,8 @@ class _SkillsPageState extends State<SkillsPage> {
         'action': 'install',
         'params': {'name': name},
       });
-      _snack(_resultMessage(raw, fallback: "已安装 '$name'"));
+      if (!mounted) return;
+      _snack(_resultMessage(raw, fallback: AppLocalizations.of(context)!.skillsPageInstalled(name)));
     } finally {
       if (mounted) setState(() => _busy.remove(name));
     }
@@ -142,20 +144,23 @@ class _SkillsPageState extends State<SkillsPage> {
   Future<void> _remove(String name) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('删除 skill'),
-        content: Text("彻底删除 skill '$name'？此操作不可撤销（仅需临时隐藏请用“下线”）。"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final l = AppLocalizations.of(ctx)!;
+        return AlertDialog(
+          title: Text(l.skillsPageDeleteTitle),
+          content: Text(l.skillsPageDeleteRemoteConfirm(name)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l.skillsPageCancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l.skillsPageDeleteAction),
+            ),
+          ],
+        );
+      },
     );
     if (ok != true) return;
     setState(() => _busy.add(name));
@@ -164,7 +169,8 @@ class _SkillsPageState extends State<SkillsPage> {
         'action': 'remove',
         'params': {'name': name},
       });
-      _snack(_resultMessage(raw, fallback: "已删除 '$name'"));
+      if (!mounted) return;
+      _snack(_resultMessage(raw, fallback: AppLocalizations.of(context)!.skillsPageRemoved(name)));
     } finally {
       if (mounted) setState(() => _busy.remove(name));
     }
@@ -179,8 +185,14 @@ class _SkillsPageState extends State<SkillsPage> {
         'action': enabled ? 'enable' : 'disable',
         'params': {'name': name},
       });
+      if (!mounted) return;
       _snack(
-        _resultMessage(raw, fallback: enabled ? "已启用 '$name'" : "已下线 '$name'"),
+        _resultMessage(
+          raw,
+          fallback: enabled
+              ? AppLocalizations.of(context)!.skillsPageEnabled(name)
+              : AppLocalizations.of(context)!.skillsPageDisabled(name),
+        ),
       );
     } finally {
       if (mounted) setState(() => _busy.remove(name));
@@ -203,20 +215,23 @@ class _SkillsPageState extends State<SkillsPage> {
   Future<void> _confirmDeleteLocal(SkillMeta s) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('删除 skill'),
-        content: Text("确定删除 skill '${s.name}'（${s.path}）？此操作不可撤销。"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final l = AppLocalizations.of(ctx)!;
+        return AlertDialog(
+          title: Text(l.skillsPageDeleteTitle),
+          content: Text(l.skillsPageDeleteLocalConfirm(s.name, s.path)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l.skillsPageCancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l.skillsPageDeleteAction),
+            ),
+          ],
+        );
+      },
     );
     if (ok != true) return;
     await SkillTool.instance.execute({
@@ -230,7 +245,7 @@ class _SkillsPageState extends State<SkillsPage> {
     try {
       final m = jsonDecode(raw);
       if (m is Map) {
-        if (m['status'] == 'error') return (m['error'] ?? '操作失败').toString();
+        if (m['status'] == 'error') return (m['error'] ?? AppLocalizations.of(context)!.skillsPageOperationFailed).toString();
         if (m['status'] == 'ok') return fallback;
       }
     } catch (_) {}
@@ -245,39 +260,40 @@ class _SkillsPageState extends State<SkillsPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     final body = _loading
         ? const Center(child: CircularProgressIndicator())
         : ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               children: [
-                _hintText(cs, '脚本目录：${SkillTool.instance.directoryPath ?? 'skills/'}'),
+                _hintText(cs, l10n.skillsPageDirHint(SkillTool.instance.directoryPath ?? 'skills/')),
                 const SizedBox(height: 8),
                 if (_skills.isEmpty)
-                  _hintText(cs, '暂无已注册 skill。在脚本目录下新建 <名称>/skill.py 即自动注册。')
+                  _hintText(cs, l10n.skillsPageEmptyHint)
                 else
                   for (final s in _skills) _skillCard(cs, s),
                 const SizedBox(height: 24),
-                _sectionTitle(cs, '远程技能仓库'),
+                _sectionTitle(cs, l10n.skillsPageRemoteSection),
                 const SizedBox(height: 6),
-                _repoField(cs, label: '仓库 (owner/repo)', controller: _repoCtrl),
+                _repoField(cs, label: l10n.skillsPageRepoLabel, controller: _repoCtrl),
                 const SizedBox(height: 8),
-                _repoField(cs, label: '分支', controller: _branchCtrl),
+                _repoField(cs, label: l10n.skillsPageBranchLabel, controller: _branchCtrl),
                 const SizedBox(height: 8),
                 _repoField(
                   cs,
-                  label: '类型 (github/gitea，留空自动)',
+                  label: l10n.skillsPageTypeLabel,
                   controller: _typeCtrl,
                 ),
                 const SizedBox(height: 8),
                 _repoField(
                   cs,
-                  label: 'Gitea 基址 (如 http://192.168.30.181:3000)',
+                  label: l10n.skillsPageBaseLabel,
                   controller: _baseCtrl,
                 ),
                 const SizedBox(height: 8),
                 _repoField(
                   cs,
-                  label: '访问令牌（私有仓库，可选）',
+                  label: l10n.skillsPageTokenLabel,
                   controller: _tokenCtrl,
                 ),
                 const SizedBox(height: 10),
@@ -285,13 +301,13 @@ class _SkillsPageState extends State<SkillsPage> {
                   children: [
                     FilledButton.tonal(
                       onPressed: _savingCfg ? null : _saveConfig,
-                      child: const Text('保存'),
+                      child: Text(l10n.skillsPageSave),
                     ),
                     const SizedBox(width: 10),
                     OutlinedButton.icon(
                       onPressed: _remoteLoading ? null : _loadRemote,
                       icon: const Icon(Lucide.cloudDownload, size: 16),
-                      label: const Text('浏览远程技能'),
+                      label: Text(l10n.skillsPageBrowseRemote),
                     ),
                     if (_remoteLoading) ...[
                       const SizedBox(width: 10),
@@ -307,7 +323,7 @@ class _SkillsPageState extends State<SkillsPage> {
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
-                      '加载失败：$_remoteError',
+                      l10n.skillsPageLoadFailed(_remoteError ?? ''),
                       style: TextStyle(fontSize: 13, color: cs.error),
                     ),
                   ),
@@ -342,7 +358,7 @@ class _SkillsPageState extends State<SkillsPage> {
           icon: const Icon(Lucide.ArrowLeft),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
-        title: const Text('Skill 管理'),
+        title: Text(l10n.settingsPageSkills),
         actions: [
           IconButton(
             icon: const Icon(Lucide.RefreshCw),
@@ -483,12 +499,13 @@ class _SkillsPageState extends State<SkillsPage> {
     final platform = (m['platform'] as List?)?.join('/') ?? '';
     final requires = (m['requires'] as List?)?.join(', ') ?? '';
     final busy = _busy.contains(name);
+    final l10n = AppLocalizations.of(context)!;
     final stateText = !installed
-        ? '未安装'
-        : (enabled ? '已安装' : '已下线');
+        ? l10n.skillsPageStateNotInstalled
+        : (enabled ? l10n.skillsPageStateInstalled : l10n.skillsPageStateDisabled);
     final metaText = [
       if (platform.isNotEmpty) platform,
-      if (requires.isNotEmpty) '依赖: $requires',
+      if (requires.isNotEmpty) l10n.skillsPageRequires(requires),
       stateText,
     ].join(' · ');
 
@@ -548,7 +565,7 @@ class _SkillsPageState extends State<SkillsPage> {
               children: [
                 if (!installed)
                   IconButton(
-                    tooltip: '安装',
+                    tooltip: AppLocalizations.of(context)!.skillsPageInstallTooltip,
                     icon: const Icon(Lucide.Download),
                     onPressed: () => _install(name),
                   )
@@ -560,7 +577,7 @@ class _SkillsPageState extends State<SkillsPage> {
                   ),
                 if (installed)
                   IconButton(
-                    tooltip: '删除',
+                    tooltip: AppLocalizations.of(context)!.skillsPageDeleteTooltip,
                     icon: const Icon(Lucide.Trash2),
                     color: cs.error,
                     onPressed: () => _remove(name),

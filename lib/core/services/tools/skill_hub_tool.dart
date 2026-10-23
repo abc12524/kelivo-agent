@@ -17,7 +17,7 @@ import 'tool_family.dart';
 ///
 /// 仓库地址默认内置 `abc12524/shell-skills@main`，可在「Skill 管理」页修改。
 /// 仓库类型 `github` / `gitea` 由 `skill_hub_type` 指定；留空时若配置了 Gitea 基址
-/// `skill_hub_base`（如 http://192.168.30.181:3000）则按 gitea 处理，否则按 github。
+/// `skill_hub_base`（如 https://gitea.example.com:3000）则按 gitea 处理，否则按 github。
 ///
 /// action 分发（两段式）：
 ///   - 不传 action                   → 子工具清单

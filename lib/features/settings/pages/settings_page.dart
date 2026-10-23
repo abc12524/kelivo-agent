@@ -233,7 +233,7 @@ class SettingsPage extends StatelessWidget {
               _iosNavRow(
                 context,
                 icon: Lucide.Brain,
-                label: 'OpenViking 记忆',
+                label: l10n.settingsPageOpenViking,
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -246,7 +246,7 @@ class SettingsPage extends StatelessWidget {
               _iosNavRow(
                 context,
                 icon: Lucide.Terminal,
-                label: 'Skill 管理',
+                label: l10n.settingsPageSkills,
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const SkillsPage()),
@@ -257,7 +257,7 @@ class SettingsPage extends StatelessWidget {
               _iosNavRow(
                 context,
                 icon: Lucide.HardDrive,
-                label: '对象存储 / S3',
+                label: l10n.settingsPageS3,
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const S3SettingsPage()),

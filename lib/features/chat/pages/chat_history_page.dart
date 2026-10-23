@@ -391,11 +391,8 @@ class _ConversationCard extends StatelessWidget {
   }
 
   String _format(BuildContext context, DateTime dt) {
-    final locale = Localizations.localeOf(context);
-    final fmt = locale.languageCode == 'zh'
-        ? DateFormat('yyyy年M月d日 HH:mm:ss')
-        : DateFormat('yyyy-MM-dd HH:mm:ss');
-    return fmt.format(dt);
+    final locale = Localizations.localeOf(context).toString();
+    return DateFormat.yMMMMd(locale).add_Hms().format(dt);
   }
 }
 

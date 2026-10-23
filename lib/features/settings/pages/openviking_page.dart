@@ -54,19 +54,19 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
           _sectionCard(
             cs,
             children: [
-              _switchRow(cs, '每轮按问题检索', ov.recallQuestion, (v) {
+              _switchRow(cs, l10n.openVikingRecallQuestion, ov.recallQuestion, (v) {
                 ov.setRecallQuestion(v);
               }),
               _divider(cs),
-              _switchRow(cs, '每步按助手正文/推理检索', ov.recallStep, (v) {
+              _switchRow(cs, l10n.openVikingRecallStep, ov.recallStep, (v) {
                 ov.setRecallStep(v);
               }),
               _divider(cs),
-              _switchRow(cs, '自动抓取并提交对话', ov.commit, (v) {
+              _switchRow(cs, l10n.openVikingCommit, ov.commit, (v) {
                 ov.setCommit(v);
               }),
               _divider(cs),
-              _switchRow(cs, '在聊天中显示注入信息', ov.showInjected, (v) {
+              _switchRow(cs, l10n.openVikingShowInjected, ov.showInjected, (v) {
                 ov.setShowInjected(v);
               }),
             ],
@@ -74,13 +74,13 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
           const SizedBox(height: 12),
 
           // Connection settings
-          _sectionHeader('连接设置', cs),
+          _sectionHeader(l10n.openVikingConnectionSection, cs),
           _sectionCard(
             cs,
             children: [
               _textFieldRow(
                 cs,
-                label: '服务器地址',
+                label: l10n.openVikingServerUrl,
                 hint: 'http://192.168.x.x:1933',
                 controller: _urlCtrl,
                 onChanged: (v) => ov.setUrl(v),
@@ -88,7 +88,7 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
               _divider(cs),
               _textFieldRow(
                 cs,
-                label: 'API Key',
+                label: l10n.openVikingApiKey,
                 hint: 'sk-...',
                 controller: _apiKeyCtrl,
                 onChanged: (v) => ov.setApiKey(v),
@@ -97,7 +97,7 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
               _divider(cs),
               _textFieldRow(
                 cs,
-                label: '用户名',
+                label: l10n.openVikingUsername,
                 hint: 'default',
                 controller: _userCtrl,
                 onChanged: (v) => ov.setUser(v),
@@ -107,13 +107,13 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
           const SizedBox(height: 12),
 
           // Search settings
-          _sectionHeader('搜索设置', cs),
+          _sectionHeader(l10n.openVikingSearchSection, cs),
           _sectionCard(
             cs,
             children: [
               _sliderRow(
                 cs,
-                label: '分数阈值: ' + ov.threshold.toStringAsFixed(2),
+                label: l10n.openVikingThreshold(ov.threshold.toStringAsFixed(2)),
                 value: ov.threshold,
                 min: 0.0,
                 max: 1.0,
@@ -123,7 +123,7 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
               _divider(cs),
               _sliderRow(
                 cs,
-                label: '显示条数: ' + ov.displayCount.toString(),
+                label: l10n.openVikingDisplayCount(ov.displayCount.toString()),
                 value: ov.displayCount.toDouble(),
                 min: 0,
                 max: 20,
@@ -135,13 +135,13 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
           const SizedBox(height: 12),
 
           // Auto-injection (find) settings
-          _sectionHeader('自动注入(find)', cs),
+          _sectionHeader(l10n.openVikingFindSection, cs),
           _sectionCard(
             cs,
             children: [
               _sliderRow(
                 cs,
-                label: 'find 分数阈值: ' + ov.findThreshold.toStringAsFixed(2),
+                label: l10n.openVikingFindThreshold(ov.findThreshold.toStringAsFixed(2)),
                 value: ov.findThreshold,
                 min: 0.0,
                 max: 1.0,
@@ -151,7 +151,7 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
               _divider(cs),
               _sliderRow(
                 cs,
-                label: 'find 显示条数: ' + ov.findLimit.toString(),
+                label: l10n.openVikingFindLimit(ov.findLimit.toString()),
                 value: ov.findLimit.toDouble(),
                 min: 0,
                 max: 20,
@@ -163,19 +163,19 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
           const SizedBox(height: 12),
 
           // Peer settings (android mode)
-          _sectionHeader('Peer 设置（android 模式）', cs),
+          _sectionHeader(l10n.openVikingPeerSection, cs),
           _sectionCard(
             cs,
             children: [
               _textFieldRow(
                 cs,
-                label: 'Peer ID（留空=default）',
+                label: l10n.openVikingPeerId,
                 hint: 'default',
                 controller: _peerCtrl,
                 onChanged: (v) => ov.setPeerId(v),
               ),
               _divider(cs),
-              _switchRow(cs, '按包名派生 workspace peer', ov.workspacePeer, (v) {
+              _switchRow(cs, l10n.openVikingWorkspacePeer, ov.workspacePeer, (v) {
                 ov.setWorkspacePeer(v);
               }),
             ],
@@ -187,7 +187,7 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
-                '✔️ OpenViking 已配置。在助手中启用 MCP 服务 @kelivo/openviking 即可使用记忆工具与自动召回',
+                l10n.openVikingStatusConfigured,
                 style: TextStyle(
                   fontSize: 13,
                   color: cs.onSurface.withValues(alpha: 0.6),
@@ -198,7 +198,7 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
-                '⚠️ 请配置服务器地址和 API Key',
+                l10n.openVikingStatusNotConfigured,
                 style: TextStyle(
                   fontSize: 13,
                   color: cs.onSurface.withValues(alpha: 0.6),
@@ -227,7 +227,7 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
           icon: const Icon(Lucide.ArrowLeft),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
-        title: const Text('OpenViking 记忆'),
+        title: Text(l10n.settingsPageOpenViking),
       ),
       body: body,
     );

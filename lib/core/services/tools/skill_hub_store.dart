@@ -76,7 +76,7 @@ class SkillHubStore {
     await prefs.setString(_typeKey, _typeCache!);
   }
 
-  /// Gitea 服务基址（如 http://192.168.30.181:3000）；空表示未配置。
+  /// Gitea 服务基址（如 https://gitea.example.com:3000）；空表示未配置。
   static Future<String> getBase() async {
     if (_baseCache != null) return _baseCache!;
     final prefs = await SharedPreferences.getInstance();
