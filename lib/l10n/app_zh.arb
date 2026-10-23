@@ -1958,5 +1958,15 @@
   },
   "skillsPageHiddenLabel": "(已隐藏)",
   "skillsPageHideTooltip": "隐藏",
-  "skillsPageUnhideTooltip": "取消隐藏"
+  "skillsPageUnhideTooltip": "取消隐藏",
+  "settingsPageAgentTools": "Agent 工具",
+  "agentToolsDescription": "Windows 下 system_tool 使用的 shell 与 Python 环境；skill 与 skill_hub 复用同一个 Python。",
+  "agentToolsBashSection": "命令行（Git Bash）",
+  "agentToolsBashPathLabel": "Bash 路径",
+  "agentToolsBashPathHint": "例如 C:\\Program Files\\Git\\bin\\bash.exe；留空则自动查找 Git Bash",
+  "agentToolsPythonSection": "Python",
+  "agentToolsPythonPathLabel": "Python 路径",
+  "agentToolsPythonPathHint": "python.exe 或虚拟环境目录；留空则使用 PATH 中的 Python",
+  "agentToolsPickFile": "选择文件…",
+  "agentToolsPickFolder": "选择目录…"
 }

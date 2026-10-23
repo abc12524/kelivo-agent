@@ -2381,5 +2381,15 @@
   },
   "skillsPageHiddenLabel": "(hidden)",
   "skillsPageHideTooltip": "Hide",
-  "skillsPageUnhideTooltip": "Unhide"
+  "skillsPageUnhideTooltip": "Unhide",
+  "settingsPageAgentTools": "Agent Tools",
+  "agentToolsDescription": "Shell and Python environment used by system_tool on Windows. Skills and skill_hub run through the same Python.",
+  "agentToolsBashSection": "Shell (Git Bash)",
+  "agentToolsBashPathLabel": "Bash path",
+  "agentToolsBashPathHint": "e.g. C:\\Program Files\\Git\\bin\\bash.exe; leave empty to detect Git Bash automatically",
+  "agentToolsPythonSection": "Python",
+  "agentToolsPythonPathLabel": "Python path",
+  "agentToolsPythonPathHint": "python.exe or a virtual environment folder; leave empty to use Python from PATH",
+  "agentToolsPickFile": "Select file…",
+  "agentToolsPickFolder": "Select folder…"
 }

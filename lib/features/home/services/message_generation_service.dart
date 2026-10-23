@@ -281,7 +281,10 @@ class MessageGenerationService {
   Future<ChatMessage?> appendSkillDeltaInjection({
     required String conversationId,
   }) async {
-    if (defaultTargetPlatform != TargetPlatform.android) return null;
+    if (defaultTargetPlatform != TargetPlatform.android &&
+        defaultTargetPlatform != TargetPlatform.windows) {
+      return null;
+    }
     try {
       await SkillTool.instance.ensureScanned();
       final enabled = SkillTool.instance.skills

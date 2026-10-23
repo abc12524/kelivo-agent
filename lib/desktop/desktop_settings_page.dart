@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -54,6 +55,7 @@ import 'setting/world_book_pane.dart';
 import 'setting/backup_pane.dart';
 import 'setting/hotkeys_pane.dart';
 import 'setting/network_proxy_pane.dart';
+import 'setting/agent_tools_pane.dart';
 import 'setting/about_pane.dart';
 import 'setting/stats_pane.dart';
 import 'package:system_fonts/system_fonts.dart';
@@ -96,6 +98,7 @@ enum _SettingsMenuItem {
   worldBook,
   tts,
   networkProxy,
+  agentTools,
   backup,
   hotkeys,
   stats,
@@ -209,6 +212,10 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
                           return const DesktopNetworkProxyPane(
                             key: ValueKey('networkProxy'),
                           );
+                        case _SettingsMenuItem.agentTools:
+                          return const DesktopAgentToolsPane(
+                            key: ValueKey('agentTools'),
+                          );
                         case _SettingsMenuItem.backup:
                           return const DesktopBackupPane(
                             key: ValueKey('backup'),
@@ -307,6 +314,12 @@ class _SettingsMenu extends StatelessWidget {
         lucide.Lucide.EthernetPort,
         l10n.settingsPageNetworkProxy,
       ),
+      if (defaultTargetPlatform == TargetPlatform.windows)
+        (
+          _SettingsMenuItem.agentTools,
+          lucide.Lucide.Wrench,
+          l10n.settingsPageAgentTools,
+        ),
       (
         _SettingsMenuItem.backup,
         lucide.Lucide.Database,

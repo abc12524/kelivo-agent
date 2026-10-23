@@ -1,7 +1,9 @@
 import "dart:convert";
+import "package:flutter/foundation.dart";
 import "package:flutter/services.dart";
 import "package:permission_handler/permission_handler.dart";
 import "notification_service.dart";
+import "tools/windows_local_tools.dart";
 
 /// Service that provides device tools (GPS, sensor, shell, SSH, etc.)
 /// Communicates with native Android code via MethodChannel
@@ -122,6 +124,10 @@ class DeviceToolsService {
 
   /// Execute a device tool call. Returns JSON string result.
   static Future<String> execute(String name, Map<String, dynamic> args) async {
+    // Windows 没有 app.tools / app.python 原生通道，走 Dart 本地实现。
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      return WindowsLocalTools.execute(name, args);
+    }
     try {
       // Request permissions before calling native tools
       if (name == "send_notification") {

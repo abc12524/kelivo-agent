@@ -8,7 +8,8 @@ import 'tool_family.dart';
 ///
 /// 对外仅暴露 {action, params}：不传 action 返回子工具清单；仅传 action 返回该子工具用法；
 /// 传 action + params 执行（无参子工具仅传 action 即执行）。
-/// 内部转调 kelivo 现有的 native 工具（app.tools / app.python）。
+/// 内部转调 kelivo 现有的 native 工具（app.tools / app.python）；
+/// Windows 下由 Dart 本地实现替代（Git Bash / 配置的 Python）。
 class SystemTool extends ToolFamily {
   static final SystemTool instance = SystemTool();
 
