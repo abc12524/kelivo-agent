@@ -42,6 +42,9 @@ endif()
 function(APPLY_STANDARD_SETTINGS TARGET)
   target_compile_features(${TARGET} PUBLIC cxx_std_14)
   target_compile_options(${TARGET} PRIVATE -Wall -Werror)
+  # 新发行版（Debian 13 / Ubuntu 24.04 等）的 GTK/appindicator 头文件会把一些
+  # 旧 API 标记为 deprecated；插件仍在使用这些 API，这里按警告类别降级，避免 -Werror 中断构建。
+  target_compile_options(${TARGET} PRIVATE -Wno-error=deprecated-declarations)
   target_compile_options(${TARGET} PRIVATE "$<$<NOT:$<CONFIG:Debug>>:-O3>")
   target_compile_definitions(${TARGET} PRIVATE "$<$<NOT:$<CONFIG:Debug>>:NDEBUG>")
 endfunction()
