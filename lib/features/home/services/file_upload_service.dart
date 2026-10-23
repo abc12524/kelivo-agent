@@ -247,6 +247,16 @@ class FileUploadService {
           // audio
           'wav',
           'mp3',
+          'm4a',
+          'aac',
+          'ogg',
+          'oga',
+          'opus',
+          'flac',
+          'weba',
+          'amr',
+          'caf',
+          'wma',
           'pcm',
           'pcm16',
           // docs

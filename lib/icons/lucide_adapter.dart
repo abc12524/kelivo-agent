@@ -151,6 +151,8 @@ class Lucide {
   static const IconData Calendar = lucide.LucideIcons.calendar;
   static const IconData ImageOff = lucide.LucideIcons.imageOff;
   static const IconData RotateCcw = lucide.LucideIcons.rotateCcw;
+  static const IconData Play = lucide.LucideIcons.play;
+  static const IconData Pause = lucide.LucideIcons.pause;
   static const IconData FlipHorizontal2 = lucide.LucideIcons.flipHorizontal2;
   static const IconData FlipVertical2 = lucide.LucideIcons.flipVertical2;
   static const IconData Loader = lucide.LucideIcons.loader;

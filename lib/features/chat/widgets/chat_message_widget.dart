@@ -29,6 +29,7 @@ import '../../../utils/assistant_regex.dart';
 import '../../../core/models/assistant.dart';
 import '../../../core/providers/tts_provider.dart';
 import '../../../shared/widgets/markdown_with_highlight.dart';
+import '../../../shared/widgets/audio_attachment_player.dart';
 import '../../../shared/widgets/snackbar.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../l10n/app_localizations.dart';
@@ -95,6 +96,25 @@ Uri? _tryNormalizeExternalUri(String raw) {
   });
 
   return (cleanText.trim(), images);
+}
+
+/// Extract audio paths from tool result content.
+/// Returns (cleanText, audioPaths). Supports local paths and HTTP URLs.
+(String, List<String>) _parseMcpAudioPaths(String? content) {
+  if (content == null || content.isEmpty) return ('', const []);
+
+  final audios = <String>[];
+  final audioRe = RegExp(r'\[audio:(.+?)\]');
+
+  final cleanText = content.replaceAllMapped(audioRe, (m) {
+    final path = m.group(1)!.trim();
+    if (path.isNotEmpty) {
+      audios.add(path);
+    }
+    return '';
+  });
+
+  return (cleanText.trim(), audios);
 }
 
 IconData _toolIconFor(String name, [Map<String, dynamic> args = const {}]) {
@@ -340,7 +360,8 @@ void _showToolDetail(BuildContext context, ToolUIPart part) {
   final cs = Theme.of(context).colorScheme;
   final l10n = AppLocalizations.of(context)!;
   final argsPretty = const JsonEncoder.withIndent('  ').convert(part.arguments);
-  final (cleanText, images) = _parseMcpImagePaths(part.content);
+  final (imageText, images) = _parseMcpImagePaths(part.content);
+  final (cleanText, _) = _parseMcpAudioPaths(imageText);
   final resultText = cleanText.isNotEmpty
       ? _prettyToolJson(cleanText)
       : l10n.chatMessageWidgetNoResultYet;
@@ -1724,6 +1745,12 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     if (parsed.docs.isNotEmpty) {
       docItems.addAll(
         parsed.docs.map((d) {
+          if (d.mime.toLowerCase().startsWith('audio/')) {
+            return AudioAttachmentPlayer(
+              source: d.path,
+              label: d.fileName,
+            );
+          }
           return IosCardPress(
             baseColor: isDark
                 ? Colors.white.withValues(alpha: 0.08)
@@ -4206,8 +4233,9 @@ class _ToolCallItem extends StatefulWidget {
 }
 
 class _ToolCallItemState extends State<_ToolCallItem> {
-  // Cache image paths (local file or URL)
+  // Cache image/audio paths (local file or URL)
   List<String> _imagePaths = const [];
+  List<String> _audioPaths = const [];
   String? _lastContent;
 
   void _updateImageCache() {
@@ -4215,8 +4243,10 @@ class _ToolCallItemState extends State<_ToolCallItem> {
     if (content == _lastContent) return;
     _lastContent = content;
 
-    final (_, paths) = _parseMcpImagePaths(content);
+    final (cleanText, paths) = _parseMcpImagePaths(content);
+    final (_, audioPaths) = _parseMcpAudioPaths(cleanText);
     _imagePaths = paths;
+    _audioPaths = audioPaths;
   }
 
   /// Build image widget from path (supports local file and HTTP URL)
@@ -4302,6 +4332,7 @@ class _ToolCallItemState extends State<_ToolCallItem> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final fg = _chatSurfaceForegroundPalette(context);
     final hasImages = _imagePaths.isNotEmpty;
+    final hasAudio = _audioPaths.isNotEmpty;
     final l10n = AppLocalizations.of(context)!;
     final ttsText = widget.part.toolName == LocalToolNames.textToSpeech
         ? _textToSpeechToolText(widget.part.arguments)
@@ -4503,6 +4534,17 @@ class _ToolCallItemState extends State<_ToolCallItem> {
                 ),
               ),
             ],
+            if (hasAudio) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final path in _audioPaths)
+                    AudioAttachmentPlayer(source: path),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -4562,7 +4604,8 @@ class _ToolCallItemState extends State<_ToolCallItem> {
     final argsPretty = const JsonEncoder.withIndent(
       '  ',
     ).convert(widget.part.arguments);
-    final (cleanText, images) = _parseMcpImagePaths(widget.part.content);
+    final (imageText, images) = _parseMcpImagePaths(widget.part.content);
+    final (cleanText, _) = _parseMcpAudioPaths(imageText);
     final resultText = cleanText.isNotEmpty
         ? _prettyJson(cleanText)
         : l10n.chatMessageWidgetNoResultYet;

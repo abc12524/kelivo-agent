@@ -53,8 +53,18 @@ class SandboxPathResolver {
   static String fix(String path) {
     if (path.isEmpty) return path;
 
-    // Strip file:// scheme if present
-    final String raw0 = path.startsWith('file://') ? path.substring(7) : path;
+    // Strip file:// scheme if present. Use toFilePath() so percent-encoded
+    // spaces/parentheses and Windows drive letters are restored correctly.
+    String raw0;
+    if (path.startsWith('file://')) {
+      try {
+        raw0 = Uri.parse(path).toFilePath();
+      } catch (_) {
+        raw0 = path.substring(7);
+      }
+    } else {
+      raw0 = path;
+    }
     // Normalize backslashes to forward slashes for matching
     final String raw = raw0.replaceAll('\\', '/');
 

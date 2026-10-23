@@ -31,6 +31,15 @@ String inferMediaMimeFromSource(String source, {String fallbackMime = ''}) {
   if (lower.endsWith('.gif')) return 'image/gif';
   if (lower.endsWith('.wav')) return 'audio/wav';
   if (lower.endsWith('.mp3')) return 'audio/mpeg';
+  if (lower.endsWith('.m4a')) return 'audio/mp4';
+  if (lower.endsWith('.aac')) return 'audio/aac';
+  if (lower.endsWith('.ogg') || lower.endsWith('.oga')) return 'audio/ogg';
+  if (lower.endsWith('.opus')) return 'audio/opus';
+  if (lower.endsWith('.flac')) return 'audio/flac';
+  if (lower.endsWith('.weba')) return 'audio/webm';
+  if (lower.endsWith('.amr')) return 'audio/amr';
+  if (lower.endsWith('.caf')) return 'audio/x-caf';
+  if (lower.endsWith('.wma')) return 'audio/x-ms-wma';
   if (lower.endsWith('.pcm16')) return 'audio/pcm16';
   if (lower.endsWith('.pcm')) return 'audio/pcm';
   if (lower.endsWith('.mp4')) return 'video/mp4';

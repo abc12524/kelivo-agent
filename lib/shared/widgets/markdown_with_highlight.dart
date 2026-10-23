@@ -23,6 +23,7 @@ import '../../features/chat/pages/image_viewer_page.dart';
 import '../../features/chat/pages/html_preview_page.dart';
 import 'snackbar.dart';
 import 'ios_tactile.dart';
+import 'audio_attachment_player.dart';
 import 'mermaid_bridge.dart';
 import 'export_capture_scope.dart';
 import 'mermaid_image_cache.dart';
@@ -124,7 +125,12 @@ class _MarkdownWithCodeHighlightState extends State<MarkdownWithCodeHighlight> {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final cs = Theme.of(context).colorScheme;
-    final sanitizedText = _sanitizeImageLinks(_renderText);
+    final audioAttachments = <_AudioAttachment>[];
+    final textWithoutAudio = _extractAudioAttachments(
+      _normalizeImageMarkers(_renderText),
+      audioAttachments,
+    );
+    final sanitizedText = _sanitizeImageLinks(textWithoutAudio);
     final imageUrls = _extractImageUrls(sanitizedText);
     final normalized = _preprocessFences(
       sanitizedText,
@@ -495,12 +501,32 @@ class _MarkdownWithCodeHighlightState extends State<MarkdownWithCodeHighlight> {
       },
     );
 
-    final result = appFontFamily.isEmpty
+    final hasText = normalized.trim().isNotEmpty;
+    Widget result = audioAttachments.isEmpty
         ? markdownWidget
-        : DefaultTextStyle.merge(
-            style: TextStyle(fontFamily: appFontFamily),
-            child: markdownWidget,
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (hasText) markdownWidget,
+              for (var i = 0; i < audioAttachments.length; i++)
+                Padding(
+                  padding: EdgeInsets.only(
+                    top: i == 0 && !hasText ? 0 : 8,
+                  ),
+                  child: AudioAttachmentPlayer(
+                    source: audioAttachments[i].source,
+                    label: audioAttachments[i].label,
+                  ),
+                ),
+            ],
           );
+    if (appFontFamily.isNotEmpty) {
+      result = DefaultTextStyle.merge(
+        style: TextStyle(fontFamily: appFontFamily),
+        child: result,
+      );
+    }
     return result;
   }
 
@@ -1872,6 +1898,129 @@ String _softBreakInline(String input) {
     if ((i + 1) % 24 == 0) buf.write('\u200B');
   }
   return buf.toString();
+}
+
+/// Convert `[image:path]` markers emitted by tools into standard Markdown
+/// images, so an assistant reply can show them the same way as `![alt](path)`.
+/// Markers inside fenced code blocks are left untouched.
+String _normalizeImageMarkers(String input) {
+  if (!input.contains('[image:')) return input;
+
+  final buffer = StringBuffer();
+  final fenceRe = RegExp(r'(```|~~~)[\s\S]*?\1');
+  var last = 0;
+  for (final match in fenceRe.allMatches(input)) {
+    buffer.write(_convertImageMarkers(input.substring(last, match.start)));
+    buffer.write(match[0]);
+    last = match.end;
+  }
+  buffer.write(_convertImageMarkers(input.substring(last)));
+  return buffer.toString();
+}
+
+final RegExp _imageMarkerRe = RegExp(r'\[image:(.+?)\]');
+
+String _convertImageMarkers(String text) {
+  if (!text.contains('[image:')) return text;
+  return text.replaceAllMapped(_imageMarkerRe, (match) {
+    final raw = (match.group(1) ?? '').trim();
+    if (raw.isEmpty || raw == 'generated') return '';
+
+    String url;
+    if (raw.startsWith('http://') ||
+        raw.startsWith('https://') ||
+        raw.startsWith('data:')) {
+      url = raw;
+    } else {
+      try {
+        url = Uri.file(raw).toString();
+      } catch (_) {
+        return match[0]!;
+      }
+    }
+    // Parentheses would terminate the Markdown image URL early.
+    url = url.replaceAll('(', '%28').replaceAll(')', '%29');
+    return '![image]($url)';
+  });
+}
+
+class _AudioAttachment {
+  const _AudioAttachment(this.source, this.label);
+
+  final String source;
+  final String? label;
+}
+
+const Set<String> _audioExtensions = {
+  'mp3',
+  'wav',
+  'm4a',
+  'aac',
+  'ogg',
+  'oga',
+  'opus',
+  'flac',
+  'weba',
+  'mpga',
+  'caf',
+  'amr',
+  'mid',
+  'midi',
+};
+
+bool _isAudioSource(String raw) {
+  final value = raw.trim();
+  if (value.isEmpty) return false;
+  if (value.startsWith('data:audio/')) return true;
+
+  var path = value;
+  final query = path.indexOf('?');
+  if (query != -1) path = path.substring(0, query);
+  final fragment = path.indexOf('#');
+  if (fragment != -1) path = path.substring(0, fragment);
+
+  final dot = path.lastIndexOf('.');
+  if (dot == -1 || dot == path.length - 1) return false;
+  return _audioExtensions.contains(path.substring(dot + 1).toLowerCase());
+}
+
+/// Extracts audio attachments from `[audio:path]` markers and Markdown links
+/// whose target is an audio file. Markers inside fenced code blocks are kept.
+String _extractAudioAttachments(String input, List<_AudioAttachment> out) {
+  if (!input.contains('[audio:') && !input.contains('](')) return input;
+
+  final buffer = StringBuffer();
+  final fenceRe = RegExp(r'(```|~~~)[\s\S]*?\1');
+  var last = 0;
+  for (final match in fenceRe.allMatches(input)) {
+    buffer.write(
+      _extractAudioFromSegment(input.substring(last, match.start), out),
+    );
+    buffer.write(match[0]);
+    last = match.end;
+  }
+  buffer.write(_extractAudioFromSegment(input.substring(last), out));
+  return buffer.toString();
+}
+
+final RegExp _audioMarkerRe = RegExp(r'\[audio:(.+?)\]');
+final RegExp _audioLinkRe = RegExp(r'(?<!!)\[([^\]\n]*)\]\(([^)\n]+)\)');
+
+String _extractAudioFromSegment(String text, List<_AudioAttachment> out) {
+  var result = text.replaceAllMapped(_audioMarkerRe, (match) {
+    final source = (match.group(1) ?? '').trim();
+    if (source.isEmpty) return match[0]!;
+    out.add(_AudioAttachment(source, null));
+    return '';
+  });
+  result = result.replaceAllMapped(_audioLinkRe, (match) {
+    final label = (match.group(1) ?? '').trim();
+    final source = (match.group(2) ?? '').trim();
+    if (!_isAudioSource(source)) return match[0]!;
+    out.add(_AudioAttachment(source, label.isEmpty ? null : label));
+    return '';
+  });
+  return result;
 }
 
 List<String> _extractImageUrls(String md) {
