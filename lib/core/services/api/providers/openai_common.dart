@@ -574,7 +574,11 @@ Future<List<Map<String, dynamic>>> _buildOpenAIChatCompletionMessages(
     outMsg['role'] = role;
 
     if (originalContent is List) {
-      outMsg['content'] = canImageInput ? originalContent : raw;
+      // Only user turns may carry image parts. Assistant/system/tool content
+      // is text-only; image parts there are rejected by chat-completions APIs.
+      outMsg['content'] = role == 'user' && canImageInput
+          ? originalContent
+          : raw;
       out.add(outMsg);
       continue;
     }
@@ -589,6 +593,15 @@ Future<List<Map<String, dynamic>>> _buildOpenAIChatCompletionMessages(
         (role == 'assistant' &&
             outMsg['tool_calls'] is List &&
             (outMsg['tool_calls'] as List).isNotEmpty)) {
+      outMsg['content'] = raw;
+      out.add(outMsg);
+      continue;
+    }
+
+    if (role == 'assistant') {
+      // Chat-completions assistant turns accept text/tool_calls only. Parsing
+      // markdown images here would upload the file as an assistant image part,
+      // which providers reject (HTTP 400) and bloats the request with base64.
       outMsg['content'] = raw;
       out.add(outMsg);
       continue;

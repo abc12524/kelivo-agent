@@ -358,8 +358,13 @@ Stream<ChatStreamChunk> _sendGoogleStream(
         }
       }
 
-      final hasMarkdownImages = raw.contains('![') && raw.contains('](');
-      final hasCustomImages = raw.contains('[image:');
+      // Assistant/model turns are text-only: parsing their markdown images
+      // would upload local files as model image parts.
+      final bool canParseTextMedia = roleRaw != 'assistant';
+      final hasMarkdownImages =
+          canParseTextMedia && raw.contains('![') && raw.contains('](');
+      final hasCustomImages =
+          canParseTextMedia && raw.contains('[image:');
       final hasAttachedImages =
           isLast && role == 'user' && (userImagePaths?.isNotEmpty == true);
       if (hasMarkdownImages || hasCustomImages || hasAttachedImages) {
@@ -800,8 +805,11 @@ Stream<ChatStreamChunk> _sendGoogleStream(
     }
 
     // Only parse images if there are images to process
-    final hasMarkdownImages = raw.contains('![') && raw.contains('](');
-    final hasCustomImages = raw.contains('[image:');
+    final bool canParseTextMedia = roleRaw != 'assistant';
+    final hasMarkdownImages =
+        canParseTextMedia && raw.contains('![') && raw.contains('](');
+    final hasCustomImages =
+        canParseTextMedia && raw.contains('[image:');
     final hasAttachedImages =
         isLast && role == 'user' && (userImagePaths?.isNotEmpty == true);
 
