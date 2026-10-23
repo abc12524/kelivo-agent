@@ -81,6 +81,12 @@ jobs:
               ;;
           esac
           echo "TAG=${TAG}" >> $GITHUB_ENV
+          {
+            echo 'CHANGES<<CHANGES_EOF'
+            git log -1 --pretty=format:'%s%n%n%b'
+            echo
+            echo 'CHANGES_EOF'
+          } >> $GITHUB_ENV
           echo "版本号: ${VERSION}（CI 运行号 ${{ github.run_number }}）"
 
       - name: 🏗️ 构建 Windows
@@ -182,7 +188,9 @@ jobs:
           name: Kelivo ${{ env.TAG }}
           prerelease: ${{ github.event.inputs.prerelease == 'true' }}
           body: |
-            CI 自动构建
+            ${{ env.CHANGES }}
+
+            ---
             - 版本: ${{ env.VERSION }}
             - 构建号: ${{ github.run_number }}
             - 提交: ${{ github.sha }}
