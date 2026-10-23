@@ -2,9 +2,28 @@ name: Build Kelivo Agent APK
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: '发布到 Release'
+        required: false
+        default: false
+        type: boolean
+      release_tag:
+        description: 'Release 标签（留空自动使用 v<版本>，需匹配 v1.1.x）'
+        required: false
+        default: ''
+        type: string
+      prerelease:
+        description: '是否为预发布版本 (Pre-release)'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write   # 需要写权限才能创建 Release
+
+env:
+  VERSION: 1.1.${{ github.run_number }}
 
 jobs:
   build:
@@ -61,12 +80,18 @@ jobs:
       - name: 📝 自动递增版本号
         id: version
         run: |
-          RUN_NUM=${{ github.run_number }}
-          VERSION="1.1.${RUN_NUM}"
           sed -i "s/^version: .*/version: ${VERSION}/" pubspec.yaml
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "TAG=v${VERSION}" >> $GITHUB_ENV
-          echo "版本号: ${VERSION}（CI 运行号 ${RUN_NUM}）"
+          TAG="${{ github.event.inputs.release_tag }}"
+          if [ -z "$TAG" ]; then TAG="v${VERSION}"; fi
+          case "$TAG" in
+            v1.1.*) ;;
+            *)
+              echo "❌ Android 通道的 Release 标签必须形如 v1.1.x，实际: $TAG"
+              exit 1
+              ;;
+          esac
+          echo "TAG=${TAG}" >> $GITHUB_ENV
+          echo "版本号: ${VERSION}（CI 运行号 ${{ github.run_number }}）"
 
       - name: 🏗️ 构建 Release APK (arm64-v8a)
         run: |
@@ -93,13 +118,15 @@ jobs:
           if-no-files-found: warn
 
       - name: 🚀 发布到 GitHub Release
+        if: ${{ github.event.inputs.publish_release == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
-          name: Kelivo v${{ env.VERSION }}
+          name: Kelivo ${{ env.TAG }}
+          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
           body: |
             CI 自动构建
-            - 版本: v${{ env.VERSION }}
+            - 版本: ${{ env.VERSION }}
             - 构建号: ${{ github.run_number }}
             - 提交: ${{ github.sha }}
           files: build/app/outputs/flutter-apk/Kelivo_android_*.apk

@@ -31,7 +31,7 @@ class UpdateInfo {
           downloads['universal'];
     }
     if (Platform.isAndroid) {
-      return downloads['android'] ?? downloads['universal'];
+      return downloads['android'];
     }
     if (Platform.isMacOS) {
       return downloads['macos'] ??
@@ -40,10 +40,10 @@ class UpdateInfo {
           downloads['universal'];
     }
     if (Platform.isWindows) {
-      return downloads['windows'] ?? downloads['win'] ?? downloads['universal'];
+      return downloads['windows'];
     }
     if (Platform.isLinux) {
-      return downloads['linux'] ?? downloads['universal'];
+      return downloads['linux'];
     }
     return downloads['universal'] ?? downloads['android'] ?? downloads['ios'];
   }
@@ -51,11 +51,21 @@ class UpdateInfo {
 
 /// 更新源：本仓库 GitHub Releases（tag = v<major>.<minor>.<build>，
 /// 其中 build 即 CI run_number，发布说明里也会写明「构建号」）。
+///
+/// 三个平台各自独立计数，因此不能直接取 `releases/latest`，否则 Android 会
+/// 拿到 Windows / Linux 的发布。这里按版本通道筛选：
+/// - Android: 1.1.x（仅 .apk）
+/// - Windows: 1.2.x（仅 .exe / .msi）
+/// - Linux:   1.3.x（仅 .deb）
 class UpdateProvider extends ChangeNotifier {
   static const String owner = 'abc12524';
   static const String repo = 'kelivo-agent';
-  static const String _releasesLatestUrl =
-      'https://api.github.com/repos/$owner/$repo/releases/latest';
+  static const String _releasesUrl =
+      'https://api.github.com/repos/$owner/$repo/releases?per_page=100';
+
+  static const String _androidChannel = '1.1.';
+  static const String _windowsChannel = '1.2.';
+  static const String _linuxChannel = '1.3.';
 
   UpdateInfo? _available;
   UpdateInfo? get available => _available;
@@ -71,7 +81,7 @@ class UpdateProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final resp = await http.get(
-        Uri.parse(_releasesLatestUrl),
+        Uri.parse(_releasesUrl),
         headers: const {
           'Accept': 'application/vnd.github+json',
           // GitHub API 要求带 User-Agent，否则返回 403。
@@ -81,9 +91,13 @@ class UpdateProvider extends ChangeNotifier {
       if (resp.statusCode != 200) {
         throw Exception('HTTP ${resp.statusCode}');
       }
-      final json =
-          jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
-      final info = _parseRelease(json);
+      final json = jsonDecode(utf8.decode(resp.bodyBytes)) as List<dynamic>;
+      final release = _pickRelease(json);
+      if (release == null) {
+        _available = null;
+        return;
+      }
+      final info = _parseRelease(release);
 
       final pkg = await PackageInfo.fromPlatform();
       final hasNew = _isRemoteNewer(
@@ -99,6 +113,50 @@ class UpdateProvider extends ChangeNotifier {
       _checking = false;
       notifyListeners();
     }
+  }
+
+  String? get _channelPrefix {
+    if (Platform.isAndroid) return _androidChannel;
+    if (Platform.isWindows) return _windowsChannel;
+    if (Platform.isLinux) return _linuxChannel;
+    return null;
+  }
+
+  String? get _requiredAssetKey {
+    if (Platform.isAndroid) return 'android';
+    if (Platform.isWindows) return 'windows';
+    if (Platform.isLinux) return 'linux';
+    return null;
+  }
+
+  /// 取当前平台通道内最新的一条正式发布；其他平台退回最新正式发布。
+  /// Releases 列表本身按创建时间倒序，直接取第一条命中的即可。
+  /// 通道版本与安装包类型必须同时匹配，避免标签写错的发布挡住正常通道。
+  Map<String, dynamic>? _pickRelease(List<dynamic> releases) {
+    final prefix = _channelPrefix;
+    final requiredAsset = _requiredAssetKey;
+    for (final item in releases) {
+      if (item is! Map) continue;
+      if (item['draft'] == true || item['prerelease'] == true) continue;
+      final tag = (item['tag_name'] ?? '').toString().trim();
+      final version = (tag.startsWith('v') || tag.startsWith('V'))
+          ? tag.substring(1)
+          : tag;
+      if (prefix != null && !version.startsWith(prefix)) continue;
+      if (requiredAsset != null && !_hasAsset(item, requiredAsset)) continue;
+      return Map<String, dynamic>.from(item);
+    }
+    return null;
+  }
+
+  bool _hasAsset(Map release, String key) {
+    final assets = (release['assets'] as List?) ?? const [];
+    for (final asset in assets) {
+      if (asset is! Map) continue;
+      final name = (asset['name'] ?? '').toString();
+      if (_platformKey(name) == key) return true;
+    }
+    return false;
   }
 
   UpdateInfo _parseRelease(Map<String, dynamic> json) {
@@ -119,7 +177,9 @@ class UpdateProvider extends ChangeNotifier {
       final url = (asset['browser_download_url'] ?? '').toString();
       if (url.isEmpty) continue;
       final name = (asset['name'] ?? '').toString();
-      downloads.putIfAbsent(_platformKey(name), () => url);
+      final key = _platformKey(name);
+      if (key == null) continue;
+      downloads.putIfAbsent(key, () => url);
     }
 
     DateTime? released;
@@ -158,16 +218,15 @@ class UpdateProvider extends ChangeNotifier {
     return null;
   }
 
-  String _platformKey(String assetName) {
+  /// 只认平台对应的安装包扩展名，避免把 zip / tar.gz 当成安装包下发。
+  String? _platformKey(String assetName) {
     final n = assetName.toLowerCase();
     if (n.endsWith('.apk')) return 'android';
     if (n.endsWith('.ipa')) return 'ios';
     if (n.endsWith('.dmg') || n.endsWith('.pkg')) return 'macos';
     if (n.endsWith('.exe') || n.endsWith('.msi')) return 'windows';
-    if (n.endsWith('.appimage') || n.endsWith('.deb') || n.endsWith('.tar.gz')) {
-      return 'linux';
-    }
-    return 'universal';
+    if (n.endsWith('.deb')) return 'linux';
+    return null;
   }
 
   bool _isRemoteNewer({
