@@ -12,7 +12,7 @@ import 'tool_family.dart';
 /// 传 action + params 执行（无参子工具仅传 action 即执行）。
 /// 内部转调 kelivo 现有的 native 工具（app.tools / app.python）；
 /// 桌面端（Windows / Linux）由 Dart 本地实现替代。
-/// Linux 精简为 shell + python（SSH 通过 shell 调用）。
+/// Windows / Linux 精简为 shell + python（SSH 通过 shell 调用）。
 class SystemTool extends ToolFamily {
   static final SystemTool instance = SystemTool();
 
@@ -39,11 +39,11 @@ class SystemTool extends ToolFamily {
   @override
   String get name => 'system_tool';
 
-  // Linux 精简：SSH 直接用 shell 调 ssh/scp，不再单独暴露子工具。
+  // Windows / Linux 精简：SSH 直接用 shell 调 ssh/scp，不再单独暴露子工具。
   @override
-  List<SubTool> get subs => defaultTargetPlatform == TargetPlatform.linux
-      ? const [_shell, _python]
-      : const [_shell, _python, _ssh];
+  List<SubTool> get subs => defaultTargetPlatform == TargetPlatform.android
+      ? const [_shell, _python, _ssh]
+      : const [_shell, _python];
 
   @override
   String get description => '系统与远程执行。子工具：${subsBrief(subs)}。';

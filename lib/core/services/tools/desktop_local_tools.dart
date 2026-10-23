@@ -10,7 +10,7 @@ import 'desktop_tool_env.dart';
 ///
 /// Windows 用 Git Bash，Linux 用系统 bash；Python 用显式配置或 PATH。
 /// 支持 `execute_system_command` 与 `execute_python`（code/script/pip/info）。
-/// ssh 与手机功能暂不支持，返回明确错误。
+/// 手机功能与桌面端未提供的工具返回明确错误。
 class DesktopLocalTools {
   DesktopLocalTools._();
 
@@ -28,13 +28,6 @@ class DesktopLocalTools {
         return _shell(args['command']);
       case 'execute_python':
         return _python(args);
-      case 'ssh_execute':
-      case 'ssh_scp':
-        return jsonEncode({
-          'error': Platform.isWindows
-              ? 'Windows 暂不支持 ssh/scp（后续版本接入）'
-              : 'Linux 暂不支持 ssh/scp（请用 shell 调用 ssh/scp）',
-        });
       default:
         return jsonEncode({'error': '当前平台暂不支持该工具: $name'});
     }

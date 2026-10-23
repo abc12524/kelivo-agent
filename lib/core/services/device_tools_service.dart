@@ -5,7 +5,7 @@ import "package:permission_handler/permission_handler.dart";
 import "notification_service.dart";
 import "tools/desktop_local_tools.dart";
 
-/// Service that provides device tools (GPS, sensor, shell, SSH, etc.)
+/// Service that provides device tools (GPS, sensor, shell, etc.)
 /// Communicates with native Android code via MethodChannel
 class DeviceToolsService {
   static const _toolsChannel = MethodChannel("app.tools");
@@ -35,38 +35,6 @@ class DeviceToolsService {
         "Read Android device sensor data. sensor=all lists all available sensors. Specify sensor for one sensor: gyroscope, accelerometer, magnetic, light, pressure, proximity, gravity, linear_acceleration, rotation.",
         {"sensor": {"type": "string", "enum": ["all","gyroscope","accelerometer","magnetic","light","pressure","proximity","gravity","linear_acceleration","rotation"], "description": "Sensor type or all"}},
         ["sensor"],
-      ),
-      _def(
-        "ssh_execute",
-        "Execute a command on a remote server via SSH. Supports password and private key auth. Provide host, port, username, command, and either password or private_key/private_key_path.",
-        {
-          "host": {"type": "string", "description": "SSH server hostname/IP"},
-          "port": {"type": "string", "description": "SSH port"},
-          "username": {"type": "string", "description": "SSH username"},
-          "password": {"type": "string", "description": "SSH password (omit if using key)"},
-          "private_key": {"type": "string", "description": "SSH private key content (PEM)"},
-          "private_key_path": {"type": "string", "description": "Path to private key file on device"},
-          "passphrase": {"type": "string", "description": "Passphrase for encrypted private key (optional)"},
-          "command": {"type": "string", "description": "Command to execute"},
-        },
-        ["host","port","username","command"],
-      ),
-      _def(
-        "ssh_scp",
-        "Transfer files via SCP. Supports upload (local->remote) and download (remote->local). Same SSH auth params as ssh_execute.",
-        {
-          "action": {"type": "string", "enum": ["upload","download"], "description": "upload or download"},
-          "host": {"type": "string", "description": "SSH server hostname/IP"},
-          "port": {"type": "string", "description": "SSH port"},
-          "username": {"type": "string", "description": "SSH username"},
-          "password": {"type": "string", "description": "SSH password (omit if using key)"},
-          "private_key": {"type": "string", "description": "SSH private key content (PEM)"},
-          "private_key_path": {"type": "string", "description": "Path to private key file on device"},
-          "passphrase": {"type": "string", "description": "Passphrase for encrypted private key (optional)"},
-          "local_path": {"type": "string", "description": "Local file path"},
-          "remote_path": {"type": "string", "description": "Remote file path"},
-        },
-        ["action","host","port","username","local_path","remote_path"],
       ),
       _def(
         "send_notification",
