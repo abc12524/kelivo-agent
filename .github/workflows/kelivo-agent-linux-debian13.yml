@@ -9,7 +9,7 @@ on:
         default: false
         type: boolean
       release_tag:
-        description: 'Release 标签（发布时必填，如 v1.3.1）'
+        description: 'Release 标签（留空自动使用 v<版本>，需匹配 v1.3.x）'
         required: false
         default: ''
         type: string
@@ -49,6 +49,16 @@ jobs:
         shell: bash
         run: |
           sed -i "s/^version: .*/version: ${VERSION}/" pubspec.yaml
+          TAG="${{ github.event.inputs.release_tag }}"
+          if [ -z "$TAG" ]; then TAG="v${VERSION}"; fi
+          case "$TAG" in
+            v1.3.*) ;;
+            *)
+              echo "❌ Linux 通道的 Release 标签必须形如 v1.3.x，实际: $TAG"
+              exit 1
+              ;;
+          esac
+          echo "TAG=${TAG}" >> $GITHUB_ENV
           echo "版本号: ${VERSION}（CI 运行号 ${{ github.run_number }}）"
 
       - name: 🏗️ 在 Debian 13 容器内构建并打包
@@ -97,12 +107,18 @@ jobs:
           if-no-files-found: error
 
       - name: 🚀 发布到 Release
-        if: ${{ github.event.inputs.publish_release == 'true' && github.event.inputs.release_tag != '' }}
+        if: ${{ github.event.inputs.publish_release == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.release_tag }}
-          name: ${{ github.event.inputs.release_tag }}
-          prerelease: ${{ github.event.inputs.prerelease }}
+          tag_name: ${{ env.TAG }}
+          name: Kelivo ${{ env.TAG }}
+          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+          body: |
+            CI 自动构建
+            - 版本: ${{ env.VERSION }}
+            - 构建号: ${{ github.run_number }}
+            - 提交: ${{ github.sha }}
           files: |
             Kelivo_linux_*_debian13_amd64.deb
             Kelivo_linux_*_debian13_amd64.tar.gz
+          fail_on_unmatched_files: true

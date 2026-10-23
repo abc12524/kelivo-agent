@@ -9,7 +9,7 @@ on:
         default: false
         type: boolean
       release_tag:
-        description: 'Release 标签（发布时必填，如 v1.1.90）'
+        description: 'Release 标签（留空自动使用 v<版本>，需匹配 v1.2.x）'
         required: false
         default: ''
         type: string
@@ -71,6 +71,16 @@ jobs:
         shell: bash
         run: |
           sed -i "s/^version: .*/version: ${VERSION}/" pubspec.yaml
+          TAG="${{ github.event.inputs.release_tag }}"
+          if [ -z "$TAG" ]; then TAG="v${VERSION}"; fi
+          case "$TAG" in
+            v1.2.*) ;;
+            *)
+              echo "❌ Windows 通道的 Release 标签必须形如 v1.2.x，实际: $TAG"
+              exit 1
+              ;;
+          esac
+          echo "TAG=${TAG}" >> $GITHUB_ENV
           echo "版本号: ${VERSION}（CI 运行号 ${{ github.run_number }}）"
 
       - name: 🏗️ 构建 Windows
@@ -165,15 +175,21 @@ jobs:
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer.iss"
 
       - name: 🚀 发布到 Release
-        if: ${{ github.event.inputs.publish_release == 'true' && github.event.inputs.release_tag != '' }}
+        if: ${{ github.event.inputs.publish_release == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.release_tag }}
-          name: ${{ github.event.inputs.release_tag }}
+          tag_name: ${{ env.TAG }}
+          name: Kelivo ${{ env.TAG }}
           prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+          body: |
+            CI 自动构建
+            - 版本: ${{ env.VERSION }}
+            - 构建号: ${{ github.run_number }}
+            - 提交: ${{ github.sha }}
           files: |
             Kelivo_windows_*.zip
             Kelivo_windows_*_setup.exe
+          fail_on_unmatched_files: true
 
       - name: 📤 上传构建产物 (ZIP)
         uses: actions/upload-artifact@v4
