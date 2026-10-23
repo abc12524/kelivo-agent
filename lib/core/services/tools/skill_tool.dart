@@ -39,8 +39,8 @@ class SkillMeta {
 ///   - action = <skill 名> + params    → 执行，params 即传给 run() 的参数字典；
 ///   - action = delete + params{skill} → 删除（注销）某个 skill 脚本。
 ///
-/// 运行在 Android 内嵌 Python 3.13 或 Windows 配置的 Python（§设置 → Agent 工具）；
-/// 其他桌面端暂不支持。
+/// 运行在 Android 内嵌 Python 3.13，或桌面端（Windows / Linux）配置的 Python；
+/// 其他平台暂不支持。
 class SkillTool extends ToolFamily {
   SkillTool._();
   static final SkillTool instance = SkillTool._();

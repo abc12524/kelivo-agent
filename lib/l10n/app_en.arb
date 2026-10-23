@@ -2393,5 +2393,7 @@
   "agentToolsPickFile": "Select file…",
   "agentToolsPickFolder": "Select folder…",
   "settingsPageOpenViking": "OpenViking Memory",
-  "settingsPageSkills": "Skills"
+  "settingsPageSkills": "Skills",
+  "agentToolsDescriptionLinux": "Linux detects bash automatically from the system; Python uses the path below or PATH. Skills and skill_hub share the same Python.",
+  "agentToolsPythonPathHintLinux": "python3 executable or a virtual environment folder (e.g. .venv); leave empty to use python3/python from PATH"
 }

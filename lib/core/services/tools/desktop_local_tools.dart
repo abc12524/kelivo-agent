@@ -4,20 +4,23 @@ import 'dart:io';
 
 import '../../../utils/app_directories.dart';
 import '../python/pip_mirror_store.dart';
-import 'windows_tool_env.dart';
+import 'desktop_tool_env.dart';
 
-/// Windows 本地执行后端：替代 Android 的 `app.tools` / `app.python` 原生通道。
+/// 桌面端本地执行后端：替代 Android 的 `app.tools` / `app.python` 原生通道。
 ///
-/// 支持 `execute_system_command`（Git Bash）与 `execute_python`
-/// （code/script/pip/info）。ssh 与手机功能暂不支持，返回明确错误。
-class WindowsLocalTools {
-  WindowsLocalTools._();
+/// Windows 用 Git Bash，Linux 用系统 bash；Python 用显式配置或 PATH。
+/// 支持 `execute_system_command` 与 `execute_python`（code/script/pip/info）。
+/// ssh 与手机功能暂不支持，返回明确错误。
+class DesktopLocalTools {
+  DesktopLocalTools._();
 
   static const int _maxOutput = 6000;
-  static const String _noBash =
-      '未找到 bash，请在 设置 → Agent 工具 中指定 Git Bash 的 bash.exe 路径';
-  static const String _noPython =
-      '未找到可用的 Python，请在 设置 → Agent 工具 中指定 python.exe 或虚拟环境目录';
+  static String get _noBash => Platform.isWindows
+      ? '未找到 bash，请在 设置 → Agent 工具 中指定 Git Bash 的 bash.exe 路径'
+      : '未找到 bash（需要 /bin/bash 或 PATH 中的 bash）';
+  static String get _noPython => Platform.isWindows
+      ? '未找到可用的 Python，请在 设置 → Agent 工具 中指定 python.exe 或虚拟环境目录'
+      : '未找到 python3/python，请安装 python3 或加入 PATH（也可在 设置 → Agent 工具 指定虚拟环境）';
 
   static Future<String> execute(String name, Map<String, dynamic> args) async {
     switch (name) {
@@ -27,16 +30,20 @@ class WindowsLocalTools {
         return _python(args);
       case 'ssh_execute':
       case 'ssh_scp':
-        return jsonEncode({'error': 'Windows 暂不支持 ssh/scp（后续版本接入）'});
+        return jsonEncode({
+          'error': Platform.isWindows
+              ? 'Windows 暂不支持 ssh/scp（后续版本接入）'
+              : 'Linux 暂不支持 ssh/scp（请用 shell 调用 ssh/scp）',
+        });
       default:
-        return jsonEncode({'error': 'Windows 暂不支持该工具: $name'});
+        return jsonEncode({'error': '当前平台暂不支持该工具: $name'});
     }
   }
 
   static Future<String> _shell(Object? command) async {
     final cmd = (command is String ? command : '').trim();
     if (cmd.isEmpty) return jsonEncode({'error': '缺少 command 参数'});
-    final bash = await WindowsToolEnv.resolveBash();
+    final bash = await DesktopToolEnv.resolveBash();
     if (bash == null) return jsonEncode({'error': _noBash});
     try {
       final r = await _run(
@@ -61,7 +68,7 @@ class WindowsLocalTools {
 
   static Future<String> _python(Map<String, dynamic> args) async {
     final action = (args['action'] as String?)?.trim() ?? '';
-    final python = await WindowsToolEnv.resolvePython();
+    final python = await DesktopToolEnv.resolvePython();
     if (python == null) {
       return jsonEncode({
         'success': false,
@@ -195,7 +202,9 @@ class WindowsLocalTools {
     required Duration timeout,
     Map<String, String>? env,
   }) async {
-    final home = Platform.environment['USERPROFILE'];
+    final home = Platform.isWindows
+        ? Platform.environment['USERPROFILE']
+        : Platform.environment['HOME'];
     final process = await Process.start(
       executable,
       args,

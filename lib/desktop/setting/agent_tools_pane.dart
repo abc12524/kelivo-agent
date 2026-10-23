@@ -1,13 +1,15 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
-import '../../core/services/tools/windows_tool_env.dart';
+import '../../core/services/tools/desktop_tool_env.dart';
 import '../../icons/lucide_adapter.dart' as lucide;
 import '../../l10n/app_localizations.dart';
 import '../../shared/widgets/ios_tile_button.dart';
 import '../../theme/app_font_weights.dart';
 
-/// Windows 专属：Agent 工具的运行环境（Git Bash / Python）。
+/// 桌面端：Agent 工具的运行环境（Windows: Git Bash / Python；Linux: Python）。
 class DesktopAgentToolsPane extends StatefulWidget {
   const DesktopAgentToolsPane({super.key});
 
@@ -26,16 +28,16 @@ class _DesktopAgentToolsPaneState extends State<DesktopAgentToolsPane> {
     super.initState();
     _load();
     _bashFn.addListener(() {
-      if (!_bashFn.hasFocus) WindowsToolEnv.setBashPath(_bashCtl.text);
+      if (!_bashFn.hasFocus) DesktopToolEnv.setBashPath(_bashCtl.text);
     });
     _pythonFn.addListener(() {
-      if (!_pythonFn.hasFocus) WindowsToolEnv.setPythonPath(_pythonCtl.text);
+      if (!_pythonFn.hasFocus) DesktopToolEnv.setPythonPath(_pythonCtl.text);
     });
   }
 
   Future<void> _load() async {
-    final bash = await WindowsToolEnv.getBashPath();
-    final python = await WindowsToolEnv.getPythonPath();
+    final bash = await DesktopToolEnv.getBashPath();
+    final python = await DesktopToolEnv.getPythonPath();
     if (!mounted) return;
     setState(() {
       _bashCtl.text = bash;
@@ -56,26 +58,26 @@ class _DesktopAgentToolsPaneState extends State<DesktopAgentToolsPane> {
     final l10n = AppLocalizations.of(context)!;
     final result = await FilePicker.platform.pickFiles(
       dialogTitle: l10n.agentToolsPickFile,
-      type: FileType.custom,
-      allowedExtensions: const ['exe'],
+      type: Platform.isWindows ? FileType.custom : FileType.any,
+      allowedExtensions: Platform.isWindows ? const ['exe'] : null,
     );
     final path = result?.files.single.path;
     if (path == null) return;
     _bashCtl.text = path;
-    await WindowsToolEnv.setBashPath(path);
+    await DesktopToolEnv.setBashPath(path);
   }
 
   Future<void> _pickPythonFile() async {
     final l10n = AppLocalizations.of(context)!;
     final result = await FilePicker.platform.pickFiles(
       dialogTitle: l10n.agentToolsPickFile,
-      type: FileType.custom,
-      allowedExtensions: const ['exe'],
+      type: Platform.isWindows ? FileType.custom : FileType.any,
+      allowedExtensions: Platform.isWindows ? const ['exe'] : null,
     );
     final path = result?.files.single.path;
     if (path == null) return;
     _pythonCtl.text = path;
-    await WindowsToolEnv.setPythonPath(path);
+    await DesktopToolEnv.setPythonPath(path);
   }
 
   Future<void> _pickPythonFolder() async {
@@ -85,7 +87,7 @@ class _DesktopAgentToolsPaneState extends State<DesktopAgentToolsPane> {
     );
     if (path == null) return;
     _pythonCtl.text = path;
-    await WindowsToolEnv.setPythonPath(path);
+    await DesktopToolEnv.setPythonPath(path);
   }
 
   @override
@@ -120,30 +122,36 @@ class _DesktopAgentToolsPaneState extends State<DesktopAgentToolsPane> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
                     child: Text(
-                      l10n.agentToolsDescription,
+                      Platform.isWindows
+                          ? l10n.agentToolsDescription
+                          : l10n.agentToolsDescriptionLinux,
                       style: TextStyle(
                         fontSize: 12,
                         color: cs.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                   ),
-                  _sectionTitle(context, l10n.agentToolsBashSection),
-                  _PathField(
-                    label: l10n.agentToolsBashPathLabel,
-                    hint: l10n.agentToolsBashPathHint,
-                    controller: _bashCtl,
-                    focusNode: _bashFn,
-                    onBrowseFile: _pickBash,
-                    browseLabel: l10n.agentToolsPickFile,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                    child: _rowDivider(context),
-                  ),
+                  if (Platform.isWindows) ...[
+                    _sectionTitle(context, l10n.agentToolsBashSection),
+                    _PathField(
+                      label: l10n.agentToolsBashPathLabel,
+                      hint: l10n.agentToolsBashPathHint,
+                      controller: _bashCtl,
+                      focusNode: _bashFn,
+                      onBrowseFile: _pickBash,
+                      browseLabel: l10n.agentToolsPickFile,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                      child: _rowDivider(context),
+                    ),
+                  ],
                   _sectionTitle(context, l10n.agentToolsPythonSection),
                   _PathField(
                     label: l10n.agentToolsPythonPathLabel,
-                    hint: l10n.agentToolsPythonPathHint,
+                    hint: Platform.isWindows
+                        ? l10n.agentToolsPythonPathHint
+                        : l10n.agentToolsPythonPathHintLinux,
                     controller: _pythonCtl,
                     focusNode: _pythonFn,
                     onBrowseFile: _pickPythonFile,

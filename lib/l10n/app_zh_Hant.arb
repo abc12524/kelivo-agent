@@ -1970,5 +1970,7 @@
   "agentToolsPickFile": "選擇檔案…",
   "agentToolsPickFolder": "選擇資料夾…",
   "settingsPageOpenViking": "OpenViking 記憶",
-  "settingsPageSkills": "Skill 管理"
+  "settingsPageSkills": "Skill 管理",
+  "agentToolsDescriptionLinux": "Linux 下 shell 自動使用系統 bash；Python 使用下方路徑或 PATH。skill 與 skill_hub 複用同一個 Python。",
+  "agentToolsPythonPathHintLinux": "python3 執行檔或虛擬環境目錄（如 .venv）；留空則使用 PATH 中的 python3/python"
 }

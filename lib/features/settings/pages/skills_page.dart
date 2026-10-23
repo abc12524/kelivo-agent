@@ -11,7 +11,7 @@ import '../../../shared/widgets/ios_switch.dart';
 import 'package:Kelivo/theme/app_font_weights.dart';
 
 /// skill 管理页：列出 skills/ 目录下自动注册的自建 Python 工具（查看名称与说明 /
-/// 下线 / 删除），并可从远程技能仓库查看 / 下载 / 下线 skill（Android / Windows）。
+/// 下线 / 删除），并可从远程技能仓库查看 / 下载 / 下线 skill（Android / Windows / Linux）。
 class SkillsPage extends StatefulWidget {
   const SkillsPage({super.key, this.embedded = false});
 

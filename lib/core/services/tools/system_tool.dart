@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
 import '../device_tools_service.dart';
 import '../python/pip_mirror_store.dart';
 import 'tool_family.dart';
@@ -9,31 +11,39 @@ import 'tool_family.dart';
 /// 对外仅暴露 {action, params}：不传 action 返回子工具清单；仅传 action 返回该子工具用法；
 /// 传 action + params 执行（无参子工具仅传 action 即执行）。
 /// 内部转调 kelivo 现有的 native 工具（app.tools / app.python）；
-/// Windows 下由 Dart 本地实现替代（Git Bash / 配置的 Python）。
+/// 桌面端（Windows / Linux）由 Dart 本地实现替代。
+/// Linux 精简为 shell + python（SSH 通过 shell 调用）。
 class SystemTool extends ToolFamily {
   static final SystemTool instance = SystemTool();
+
+  static const SubTool _shell = SubTool(
+    'shell',
+    '执行 Shell 命令',
+    'shell: 参数 command = 要执行的 Shell 命令',
+  );
+  static const SubTool _python = SubTool(
+    'python',
+    '执行 Python 代码/脚本，或 pip 安装依赖',
+    'python: 参数 mode = code|script|pip|info（必填）；code（mode=code）、'
+        'path（mode=script，脚本文件路径）、packages（mode=pip，空格分隔）、'
+        'index_url（mode=pip，可选镜像源，默认中科大；设置后后续 pip 沿用）',
+  );
+  static const SubTool _ssh = SubTool(
+    'ssh',
+    'SSH 远程执行与文件传输',
+    'ssh: 参数 action = exec|upload|download（默认 exec）；host, port, username 必填；'
+        'exec 需 command；upload/download 需 local_path, remote_path；'
+        '认证传 password 或 private_key / private_key_path（三选一）',
+  );
 
   @override
   String get name => 'system_tool';
 
+  // Linux 精简：SSH 直接用 shell 调 ssh/scp，不再单独暴露子工具。
   @override
-  final List<SubTool> subs = const [
-    SubTool('shell', '执行 Shell 命令', 'shell: 参数 command = 要执行的 Shell 命令'),
-    SubTool(
-      'python',
-      '执行 Python 代码/脚本，或 pip 安装依赖',
-      'python: 参数 mode = code|script|pip|info（必填）；code（mode=code）、'
-          'path（mode=script，脚本文件路径）、packages（mode=pip，空格分隔）、'
-          'index_url（mode=pip，可选镜像源，默认中科大；设置后后续 pip 沿用）',
-    ),
-    SubTool(
-      'ssh',
-      'SSH 远程执行与文件传输',
-      'ssh: 参数 action = exec|upload|download（默认 exec）；host, port, username 必填；'
-          'exec 需 command；upload/download 需 local_path, remote_path；'
-          '认证传 password 或 private_key / private_key_path（三选一）',
-    ),
-  ];
+  List<SubTool> get subs => defaultTargetPlatform == TargetPlatform.linux
+      ? const [_shell, _python]
+      : const [_shell, _python, _ssh];
 
   @override
   String get description => '系统与远程执行。子工具：${subsBrief(subs)}。';

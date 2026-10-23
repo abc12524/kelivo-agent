@@ -312,7 +312,8 @@ class _SettingsMenu extends StatelessWidget {
         lucide.Lucide.Brain,
         l10n.settingsPageOpenViking,
       ),
-      if (defaultTargetPlatform == TargetPlatform.windows)
+      if (defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux)
         (_SettingsMenuItem.skills, lucide.Lucide.Code, l10n.settingsPageSkills),
       (
         _SettingsMenuItem.quickPhrases,
@@ -335,7 +336,8 @@ class _SettingsMenu extends StatelessWidget {
         lucide.Lucide.EthernetPort,
         l10n.settingsPageNetworkProxy,
       ),
-      if (defaultTargetPlatform == TargetPlatform.windows)
+      if (defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux)
         (
           _SettingsMenuItem.agentTools,
           lucide.Lucide.Wrench,

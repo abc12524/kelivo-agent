@@ -222,12 +222,15 @@ class ToolHandlerService {
   }
 
   /// 构建工具族的 function 定义。
-  /// 依赖 native 渠道（app.tools / app.python）的族仅 Android 平台提供；
-  /// Windows 用 Dart 本地实现（Git Bash / Python），不提供手机功能族。
+  /// Android 走原生通道；Windows / Linux 用 Dart 本地实现（bash / Python）。
+  /// 手机功能族仅在 Android 提供。
   List<Map<String, dynamic>> _buildFamilyDefinitions() {
     final defs = <Map<String, dynamic>>[];
     final android = defaultTargetPlatform == TargetPlatform.android;
-    if (android || defaultTargetPlatform == TargetPlatform.windows) {
+    final desktop =
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux;
+    if (android || desktop) {
       defs.add(_familyDefinition(SystemTool.instance));
       if (android) defs.add(_familyDefinition(PhoneTool.instance));
       defs.add(_familyDefinition(SkillTool.instance));

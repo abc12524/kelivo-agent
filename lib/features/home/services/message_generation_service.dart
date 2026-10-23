@@ -282,7 +282,8 @@ class MessageGenerationService {
     required String conversationId,
   }) async {
     if (defaultTargetPlatform != TargetPlatform.android &&
-        defaultTargetPlatform != TargetPlatform.windows) {
+        defaultTargetPlatform != TargetPlatform.windows &&
+        defaultTargetPlatform != TargetPlatform.linux) {
       return null;
     }
     try {
