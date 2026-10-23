@@ -1968,5 +1968,7 @@
   "agentToolsPythonPathLabel": "Python 路徑",
   "agentToolsPythonPathHint": "python.exe 或虛擬環境目錄；留空則使用 PATH 中的 Python",
   "agentToolsPickFile": "選擇檔案…",
-  "agentToolsPickFolder": "選擇資料夾…"
+  "agentToolsPickFolder": "選擇資料夾…",
+  "settingsPageOpenViking": "OpenViking 記憶",
+  "settingsPageSkills": "Skill 管理"
 }

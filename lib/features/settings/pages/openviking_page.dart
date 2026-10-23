@@ -7,7 +7,11 @@ import '../../../shared/widgets/ios_tactile.dart';
 import 'package:Kelivo/theme/app_font_weights.dart';
 
 class OpenVikingPage extends StatefulWidget {
-  const OpenVikingPage({super.key});
+  const OpenVikingPage({super.key, this.embedded = false});
+
+  /// 嵌在桌面设置页中时不再套 Scaffold/AppBar。
+  final bool embedded;
+
   @override
   State<OpenVikingPage> createState() => _OpenVikingPageState();
 }
@@ -43,17 +47,9 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
     final cs = Theme.of(context).colorScheme;
     final ov = context.watch<OpenVikingProvider>();
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Lucide.ArrowLeft),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-        title: const Text('OpenViking 记忆'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        children: [
+    final body = ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      children: [
           // Options（是否启用由 MCP 服务 @kelivo/openviking 的开 / 关决定）
           _sectionCard(
             cs,
@@ -210,7 +206,30 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
               ),
             ),
         ],
+    );
+
+    if (widget.embedded) {
+      return Material(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 960),
+            child: body,
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Lucide.ArrowLeft),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        title: const Text('OpenViking 记忆'),
       ),
+      body: body,
     );
   }
 

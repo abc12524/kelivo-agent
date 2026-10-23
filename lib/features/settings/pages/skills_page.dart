@@ -11,9 +11,13 @@ import '../../../shared/widgets/ios_switch.dart';
 import 'package:Kelivo/theme/app_font_weights.dart';
 
 /// skill 管理页：列出 skills/ 目录下自动注册的自建 Python 工具（查看名称与说明 /
-/// 下线 / 删除），并可从远程技能仓库查看 / 下载 / 下线 skill（仅 Android，依赖内置 Python）。
+/// 下线 / 删除），并可从远程技能仓库查看 / 下载 / 下线 skill（Android / Windows）。
 class SkillsPage extends StatefulWidget {
-  const SkillsPage({super.key});
+  const SkillsPage({super.key, this.embedded = false});
+
+  /// 嵌在桌面设置页中时不再套 Scaffold/AppBar。
+  final bool embedded;
+
   @override
   State<SkillsPage> createState() => _SkillsPageState();
 }
@@ -241,26 +245,9 @@ class _SkillsPageState extends State<SkillsPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Lucide.ArrowLeft),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-        title: const Text('Skill 管理'),
-        actions: [
-          IconButton(
-            icon: const Icon(Lucide.RefreshCw),
-            onPressed: () {
-              _refresh();
-              _loadRemote();
-            },
-          ),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
+    final body = _loading
+        ? const Center(child: CircularProgressIndicator())
+        : ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               children: [
                 _hintText(cs, '脚本目录：${SkillTool.instance.directoryPath ?? 'skills/'}'),
@@ -334,7 +321,39 @@ class _SkillsPageState extends State<SkillsPage> {
                     ),
                   ),
               ],
-            ),
+            );
+
+    if (widget.embedded) {
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 960),
+            child: body,
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Lucide.ArrowLeft),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        title: const Text('Skill 管理'),
+        actions: [
+          IconButton(
+            icon: const Icon(Lucide.RefreshCw),
+            onPressed: () {
+              _refresh();
+              _loadRemote();
+            },
+          ),
+        ],
+      ),
+      body: body,
     );
   }
 

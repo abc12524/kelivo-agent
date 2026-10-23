@@ -2391,5 +2391,7 @@
   "agentToolsPythonPathLabel": "Python path",
   "agentToolsPythonPathHint": "python.exe or a virtual environment folder; leave empty to use Python from PATH",
   "agentToolsPickFile": "Select file…",
-  "agentToolsPickFolder": "Select folder…"
+  "agentToolsPickFolder": "Select folder…",
+  "settingsPageOpenViking": "OpenViking Memory",
+  "settingsPageSkills": "Skills"
 }

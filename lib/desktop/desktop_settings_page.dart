@@ -9,6 +9,8 @@ import 'dart:ui' as ui;
 
 import '../icons/lucide_adapter.dart' as lucide;
 import '../l10n/app_localizations.dart';
+import '../features/settings/pages/openviking_page.dart';
+import '../features/settings/pages/skills_page.dart';
 import '../theme/app_font_weights.dart';
 import '../theme/palettes.dart';
 import '../core/providers/settings_provider.dart';
@@ -93,6 +95,8 @@ enum _SettingsMenuItem {
   defaultModel,
   search,
   mcp,
+  openViking,
+  skills,
   quickPhrases,
   instructionInjection,
   worldBook,
@@ -208,6 +212,16 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
                           );
                         case _SettingsMenuItem.mcp:
                           return const DesktopMcpPane(key: ValueKey('mcp'));
+                        case _SettingsMenuItem.openViking:
+                          return const OpenVikingPage(
+                            key: ValueKey('openViking'),
+                            embedded: true,
+                          );
+                        case _SettingsMenuItem.skills:
+                          return const SkillsPage(
+                            key: ValueKey('skills'),
+                            embedded: true,
+                          );
                         case _SettingsMenuItem.networkProxy:
                           return const DesktopNetworkProxyPane(
                             key: ValueKey('networkProxy'),
@@ -293,6 +307,13 @@ class _SettingsMenu extends StatelessWidget {
       ),
       (_SettingsMenuItem.search, lucide.Lucide.Earth, l10n.settingsPageSearch),
       (_SettingsMenuItem.mcp, lucide.Lucide.Terminal, l10n.settingsPageMcp),
+      (
+        _SettingsMenuItem.openViking,
+        lucide.Lucide.Brain,
+        l10n.settingsPageOpenViking,
+      ),
+      if (defaultTargetPlatform == TargetPlatform.windows)
+        (_SettingsMenuItem.skills, lucide.Lucide.Code, l10n.settingsPageSkills),
       (
         _SettingsMenuItem.quickPhrases,
         lucide.Lucide.Zap,
