@@ -975,11 +975,18 @@ class MessageBuilderService {
   }
 
   /// Convert local Markdown image links to inline base64 for model context.
+  ///
+  /// Only user messages are processed. Providers send assistant/tool content
+  /// as plain text, so a data URL there is tokenized as a huge base64 blob
+  /// instead of an image (a single 300 KB JPEG costs ~300k prompt tokens).
   Future<void> inlineLocalImages(List<Map<String, dynamic>> apiMessages) async {
     for (int i = 0; i < apiMessages.length; i++) {
-      final s = (apiMessages[i]['content'] ?? '').toString();
+      final message = apiMessages[i];
+      if ((message['role'] ?? '').toString() != 'user') continue;
+      if (_isOpenVikingInjection(message)) continue;
+      final s = (message['content'] ?? '').toString();
       if (s.isNotEmpty) {
-        apiMessages[i]['content'] =
+        message['content'] =
             await MarkdownMediaSanitizer.inlineLocalImagesToBase64(s);
       }
     }
