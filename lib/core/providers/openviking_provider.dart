@@ -17,6 +17,7 @@ class OpenVikingProvider extends ChangeNotifier {
   static const _commitKey = 'ov_commit_v1';
   static const _showInjectedKey = 'show_injected_messages_v1';
   static const _peerKey = 'ov_peer_id_v1';
+  static const _userTipsKey = 'ov_user_tips_v1';
   static const _wsPeerKey = 'ov_workspace_peer_v1';
 
   String _url = '';
@@ -32,6 +33,7 @@ class OpenVikingProvider extends ChangeNotifier {
   bool _showInjected = false;
   String _peerId = '';
   bool _workspacePeer = false;
+  String _userTips = '';
   String _packageName = '';
 
   String get url => _url;
@@ -47,6 +49,7 @@ class OpenVikingProvider extends ChangeNotifier {
   bool get showInjected => _showInjected;
   String get peerId => _peerId;
   bool get workspacePeer => _workspacePeer;
+  String get userTips => _userTips;
 
   OpenVikingService? _service;
   OpenVikingService? get service => _service;
@@ -71,6 +74,7 @@ class OpenVikingProvider extends ChangeNotifier {
     _showInjected = prefs.getBool(_showInjectedKey) ?? false;
     _peerId = prefs.getString(_peerKey) ?? '';
     _workspacePeer = prefs.getBool(_wsPeerKey) ?? false;
+    _userTips = prefs.getString(_userTipsKey) ?? '';
     _rebuildService();
     notifyListeners();
     await _loadPackageName();
@@ -181,6 +185,12 @@ class OpenVikingProvider extends ChangeNotifier {
     _rebuildService();
     notifyListeners();
     (await SharedPreferences.getInstance()).setBool(_wsPeerKey, v);
+  }
+
+  Future<void> setUserTips(String v) async {
+    _userTips = v.trim();
+    notifyListeners();
+    (await SharedPreferences.getInstance()).setString(_userTipsKey, _userTips);
   }
 
 }

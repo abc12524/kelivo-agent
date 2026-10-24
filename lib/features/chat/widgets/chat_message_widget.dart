@@ -1303,11 +1303,22 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   }
 
   Widget _buildOpenVikingInjectionMessage() {
+    final content = widget.message.content;
+    final hasSkills = content.contains('<available_skills>');
+    final hasOv = content.contains('<available_openviking>');
+    final hasTips = content.contains('<user_tips>');
+    final label = hasSkills && (hasOv || hasTips)
+        ? 'context'
+        : hasSkills
+        ? 'skill-list'
+        : hasOv
+        ? 'ov-recall'
+        : hasTips
+        ? 'user-tips'
+        : 'context';
     final part = ToolUIPart(
       id: widget.message.id,
-      toolName: widget.message.content.contains('<available_skills>')
-          ? 'skill-list'
-          : 'ov-recall',
+      toolName: label,
       arguments: const <String, dynamic>{},
       content: widget.message.content,
       loading: false,

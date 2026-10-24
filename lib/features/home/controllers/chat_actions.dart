@@ -507,34 +507,26 @@ class ChatActions {
     }
 
     // 注入（均落库为 inject_user，默认不在 UI 展示）：
-    // 1) skill 名单增量；2) 本轮用户问题抓取到 OV session；3) 按问题召回。
+    // 1) 本轮用户问题抓取到 OV session；2) skill 名单 + 问题召回 + user_tips
+    //    合并为一条 system-reminder 消息。
     final ovEnabled = _isOpenVikingMcpEnabled();
+    final shouldSkipRecall = input.imagePaths.isNotEmpty;
     messageGenerationService.prepareRecallTurn(conversation.id);
-    final skillInjected = await messageGenerationService
-        .appendSkillDeltaInjection(conversationId: conversation.id);
-    if (skillInjected != null &&
-        chatController.appendPersistedTailMessage(skillInjected)) {
-      viewModel.restoreMessageUiState();
-    }
     if (ovEnabled) {
       await messageGenerationService.captureUserTurn(
         conversationId: conversation.id,
         userMessage: userMessage,
         enabled: true,
       );
-      final shouldSkipRecall = input.imagePaths.isNotEmpty;
-      if (!shouldSkipRecall) {
-        final ovInjected = await messageGenerationService
-            .recallQuestionInjection(
-              conversationId: conversation.id,
-              query: content,
-              enabled: true,
-            );
-        if (ovInjected != null &&
-            chatController.appendPersistedTailMessage(ovInjected)) {
-          viewModel.restoreMessageUiState();
-        }
-      }
+    }
+    final turnInjection = await messageGenerationService.prepareTurnInjection(
+      conversationId: conversation.id,
+      query: content,
+      recallEnabled: ovEnabled && !shouldSkipRecall,
+    );
+    if (turnInjection != null &&
+        chatController.appendPersistedTailMessage(turnInjection)) {
+      viewModel.restoreMessageUiState();
     }
     onMessagesChanged?.call();
 

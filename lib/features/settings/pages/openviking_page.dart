@@ -21,6 +21,7 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
   late TextEditingController _apiKeyCtrl;
   late TextEditingController _userCtrl;
   late TextEditingController _peerCtrl;
+  late TextEditingController _userTipsCtrl;
 
   @override
   void initState() {
@@ -30,6 +31,7 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
     _apiKeyCtrl = TextEditingController(text: ov.apiKey);
     _userCtrl = TextEditingController(text: ov.user);
     _peerCtrl = TextEditingController(text: ov.peerId);
+    _userTipsCtrl = TextEditingController(text: ov.userTips);
   }
 
   @override
@@ -38,6 +40,7 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
     _apiKeyCtrl.dispose();
     _userCtrl.dispose();
     _peerCtrl.dispose();
+    _userTipsCtrl.dispose();
     super.dispose();
   }
 
@@ -69,6 +72,23 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
               _switchRow(cs, l10n.openVikingShowInjected, ov.showInjected, (v) {
                 ov.setShowInjected(v);
               }),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // User tips（每会话注入一次，包在 <user_tips> 内）
+          _sectionHeader(l10n.openVikingUserTipsSection, cs),
+          _sectionCard(
+            cs,
+            children: [
+              _textFieldRow(
+                cs,
+                label: l10n.openVikingUserTipsLabel,
+                hint: l10n.openVikingUserTipsHint,
+                controller: _userTipsCtrl,
+                onChanged: (v) => ov.setUserTips(v),
+                maxLines: 4,
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -304,6 +324,7 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
     required TextEditingController controller,
     ValueChanged<String>? onChanged,
     bool obscure = false,
+    int maxLines = 1,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -323,6 +344,8 @@ class _OpenVikingPageState extends State<OpenVikingPage> {
           TextField(
             controller: controller,
             obscureText: obscure,
+            minLines: maxLines > 1 ? 3 : 1,
+            maxLines: maxLines,
             decoration: InputDecoration(
               hintText: hint,
               isDense: true,

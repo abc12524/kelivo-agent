@@ -30,7 +30,7 @@ class RecallEngine {
     }
   }
 
-  /// 基于 query 召回相关记忆，返回可注入的块（含 `## 📖 相关记忆` 标记）。
+  /// 基于 query 召回相关记忆，返回可注入的块（含 `## 相关记忆` 标记）。
   /// 未命中、条数为 0、query 过短或全部已注入时返回 null。
   Future<String?> recall(String query) async {
     if (findLimit <= 0) return null;

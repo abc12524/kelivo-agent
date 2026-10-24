@@ -277,61 +277,79 @@ class MessageGenerationService {
     } catch (_) {}
   }
 
-  /// 追加 skill 名单：首次全量，之后只追加新增项（只追加不重排，保护前缀缓存）。
-  Future<ChatMessage?> appendSkillDeltaInjection({
+  /// 每轮注入：skill 名单 + 问题召回 + user_tips 合并为一条 inject_user 消息。
+  /// 没有工具轮数限制，因此不注入轮次与耗尽警告。
+  Future<ChatMessage?> prepareTurnInjection({
     required String conversationId,
+    required String query,
+    required bool recallEnabled,
   }) async {
-    if (defaultTargetPlatform != TargetPlatform.android &&
-        defaultTargetPlatform != TargetPlatform.windows &&
-        defaultTargetPlatform != TargetPlatform.linux) {
-      return null;
-    }
     try {
-      await SkillTool.instance.ensureScanned();
-      final enabled = SkillTool.instance.skills
-          .where((s) => s.enabled)
+      final ov = contextProvider.read<OpenVikingProvider>();
+      final injected = chatService
+          .getMessages(conversationId)
+          .where((m) => m.role == ChatMessage.roleInjectUser)
+          .map((m) => m.content)
           .toList(growable: false);
-      if (enabled.isEmpty) return null;
 
-      final known = <String>{};
-      for (final m in chatService.getMessages(conversationId)) {
-        if (m.role != ChatMessage.roleInjectUser) continue;
-        if (!m.content.contains(Recall.skillMark)) continue;
-        known.addAll(Recall.parseSkillNames(m.content));
+      final blocks = <String>[];
+      final skillBlock = await _takeSkillBlock(injected);
+      if (skillBlock != null) blocks.add(skillBlock);
+
+      if (recallEnabled && ov.isConfigured && ov.recallQuestion) {
+        final engine = _engineFor(conversationId, ov);
+        final block = engine == null ? null : await engine.recall(query);
+        if (block != null) blocks.add(Recall.openvikingBlock(block));
       }
-      final fresh = enabled
-          .where((s) => !known.contains(s.name))
-          .map((s) => (s.name, s.description))
-          .toList(growable: false);
-      if (fresh.isEmpty) return null;
-      final content = Recall.buildSkillMessage(fresh, delta: known.isNotEmpty);
-      return _persistInject(conversationId, content);
+
+      final tipsBlock = _takeUserTipsBlock(injected, ov);
+      if (tipsBlock != null) blocks.add(tipsBlock);
+
+      if (blocks.isEmpty) return null;
+      return _persistInject(
+        conversationId,
+        Recall.buildTurnContext(blocks),
+      );
     } catch (_) {
       return null;
     }
   }
 
-  /// 每轮按用户问题召回并落库（inject_user）。
-  Future<ChatMessage?> recallQuestionInjection({
-    required String conversationId,
-    required String query,
-    required bool enabled,
-  }) async {
-    if (!enabled) return null;
-    try {
-      final ov = contextProvider.read<OpenVikingProvider>();
-      if (!ov.isConfigured || !ov.recallQuestion) return null;
-      final engine = _engineFor(conversationId, ov);
-      if (engine == null) return null;
-      final block = await engine.recall(query);
-      if (block == null) return null;
-      return _persistInject(
-        conversationId,
-        Recall.wrapRecallBlock(block),
-      );
-    } catch (_) {
+  /// skill 名单块：首轮全量，之后只补新增项。
+  Future<String?> _takeSkillBlock(List<String> injected) async {
+    if (defaultTargetPlatform != TargetPlatform.android &&
+        defaultTargetPlatform != TargetPlatform.windows &&
+        defaultTargetPlatform != TargetPlatform.linux) {
       return null;
     }
+    await SkillTool.instance.ensureScanned();
+    final enabled = SkillTool.instance.skills
+        .where((s) => s.enabled)
+        .toList(growable: false);
+    if (enabled.isEmpty) return null;
+
+    final known = <String>{};
+    for (final content in injected) {
+      if (!content.contains(Recall.skillMark)) continue;
+      known.addAll(Recall.parseSkillNames(content));
+    }
+    final fresh = enabled
+        .where((s) => !known.contains(s.name))
+        .map((s) => (s.name, s.description))
+        .toList(growable: false);
+    if (fresh.isEmpty) return null;
+    return Recall.buildSkillBlock(fresh, delta: known.isNotEmpty);
+  }
+
+  /// user_tips 每会话只注入一次。
+  String? _takeUserTipsBlock(
+    List<String> injected,
+    OpenVikingProvider ov,
+  ) {
+    final tips = ov.userTips.trim();
+    if (tips.isEmpty) return null;
+    if (injected.any((c) => c.contains(Recall.userTipsOpen))) return null;
+    return Recall.buildUserTipsBlock(tips);
   }
 
   /// 每步召回：只以 LLM 的 reasoning / content 为 query。
