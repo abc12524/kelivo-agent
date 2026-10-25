@@ -567,7 +567,7 @@ Stream<ChatStreamChunk> _sendGoogleStream(
         if (u != null) {
           final prompt = (u['promptTokenCount'] ?? 0) as int? ?? 0;
           final completion = (u['candidatesTokenCount'] ?? 0) as int? ?? 0;
-          totalUsage = (totalUsage ?? const TokenUsage()).merge(
+          totalUsage = (totalUsage ?? const TokenUsage()).add(
             TokenUsage(
               promptTokens: prompt,
               completionTokens: completion,
@@ -981,6 +981,7 @@ Stream<ChatStreamChunk> _sendGoogleStream(
   }
 
   while (true) {
+    TokenUsage? roundUsage;
     final defaultMaxOutputTokens = _defaultGeminiMaxOutputTokens(
       upstreamModelId,
     );
@@ -1158,14 +1159,16 @@ Stream<ChatStreamChunk> _sendGoogleStream(
           final obj = jsonDecode(data) as Map<String, dynamic>;
           final um = obj['usageMetadata'];
           if (um is Map<String, dynamic>) {
-            usage = (usage ?? const TokenUsage()).merge(
+            roundUsage = (roundUsage ?? const TokenUsage()).merge(
               TokenUsage(
                 promptTokens: (um['promptTokenCount'] ?? 0) as int,
                 completionTokens: (um['candidatesTokenCount'] ?? 0) as int,
                 totalTokens: (um['totalTokenCount'] ?? 0) as int,
               ),
             );
-            totalTokens = usage.totalTokens;
+            totalTokens = (usage ?? const TokenUsage())
+                .add(roundUsage)
+                .totalTokens;
           }
 
           final candidates = obj['candidates'];
@@ -1497,6 +1500,12 @@ Stream<ChatStreamChunk> _sendGoogleStream(
             if (finishReason != null &&
                 calls.isEmpty &&
                 (!expectImage || receivedImage)) {
+              final finishedRound = roundUsage;
+              if (finishedRound != null) {
+                usage = (usage ?? const TokenUsage()).add(finishedRound);
+                roundUsage = null;
+                totalTokens = usage.totalTokens;
+              }
               // Emit final citations if any not emitted
               if (builtinCitations.isNotEmpty) {
                 final payload = jsonEncode({'items': builtinCitations});
@@ -1543,6 +1552,13 @@ Stream<ChatStreamChunk> _sendGoogleStream(
           // ignore malformed chunk
         }
       }
+    }
+
+    final finishedRound = roundUsage;
+    if (finishedRound != null) {
+      usage = (usage ?? const TokenUsage()).add(finishedRound);
+      roundUsage = null;
+      totalTokens = usage.totalTokens;
     }
 
     // Flush any buffered inline image (e.g., when stream ends without explicit finishReason)

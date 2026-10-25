@@ -12,10 +12,10 @@ class TokenUsage {
   });
 
   TokenUsage merge(TokenUsage other) {
-    // For streaming responses:
-    // - prompt tokens: take max (usually stays constant after initial value)
-    // - completion tokens: take max (grows as response streams)
-    // - cached tokens: take max (usually set once)
+    // Within one streaming round the usage snapshots are cumulative:
+    // - prompt tokens: keep the latest non-zero value
+    // - completion tokens: keep the latest non-zero value
+    // - cached tokens: keep the latest non-zero value
     final prompt = other.promptTokens > 0 ? other.promptTokens : promptTokens;
     final completion = other.completionTokens > 0
         ? other.completionTokens
@@ -31,6 +31,21 @@ class TokenUsage {
       completionTokens: completion,
       cachedTokens: cached,
       totalTokens: total,
+    );
+  }
+
+  TokenUsage add(TokenUsage other) {
+    final prompt = promptTokens + other.promptTokens;
+    final completion = completionTokens + other.completionTokens;
+    final cached = cachedTokens + other.cachedTokens;
+    final splitTotal = prompt + completion;
+    return TokenUsage(
+      promptTokens: prompt,
+      completionTokens: completion,
+      cachedTokens: cached,
+      totalTokens: splitTotal > 0
+          ? splitTotal
+          : totalTokens + other.totalTokens,
     );
   }
 }

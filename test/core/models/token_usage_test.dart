@@ -17,5 +17,24 @@ void main() {
         expect(merged.totalTokens, 895);
       },
     );
+
+    test('add accumulates usage across rounds', () {
+      final total = const TokenUsage(
+        promptTokens: 100,
+        completionTokens: 20,
+        cachedTokens: 30,
+      ).add(
+        const TokenUsage(
+          promptTokens: 200,
+          completionTokens: 40,
+          cachedTokens: 50,
+        ),
+      );
+
+      expect(total.promptTokens, 300);
+      expect(total.completionTokens, 60);
+      expect(total.cachedTokens, 80);
+      expect(total.totalTokens, 360);
+    });
   });
 }

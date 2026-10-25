@@ -1510,7 +1510,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
               cachedTokens: cached,
               totalTokens: prompt + completion,
             );
-            aggUsage = (aggUsage ?? const TokenUsage()).merge(round);
+            aggUsage = (aggUsage ?? const TokenUsage()).add(round);
           }
         } catch (_) {}
 
@@ -1688,6 +1688,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
 
   // Streaming path
   final sse = response.stream.transform(utf8.decoder);
+  final sseIterator = StreamIterator<String>(_ensureTrailingNewline(sse));
   String buffer = '';
   int totalTokens = 0;
   TokenUsage? usage;
@@ -1718,7 +1719,45 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
       const <Map<String, dynamic>>[];
   String? finishReason;
 
-  await for (final chunk in _ensureTrailingNewline(sse)) {
+  bool consumeUsageLine(String rawLine) {
+    final line = rawLine.trim();
+    if (line.isEmpty || !line.startsWith('data:')) return false;
+    final data = line.substring(5).trimLeft();
+    if (data == '[DONE]') return true;
+    try {
+      final o = jsonDecode(data);
+      if (o is Map) {
+        usage = _mergeOpenAICompatibleUsage(usage, o['usage']);
+        if (usage != null) {
+          totalTokens = usage.totalTokens;
+          return true;
+        }
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  Future<void> drainRemainingUsage(List<String> pendingLines) async {
+    for (final line in pendingLines) {
+      if (consumeUsageLine(line)) return;
+    }
+    var rest = buffer;
+    try {
+      while (await sseIterator.moveNext()) {
+        rest += sseIterator.current;
+        final parts = rest.split('\n');
+        rest = parts.last;
+        for (var i = 0; i < parts.length - 1; i++) {
+          if (consumeUsageLine(parts[i])) return;
+        }
+      }
+    } catch (_) {
+      // The round already finished; trailing stream errors are non-fatal.
+    }
+  }
+
+  while (await sseIterator.moveNext()) {
+    final chunk = sseIterator.current;
     buffer += chunk;
     final lines = buffer.split('\n');
     buffer = lines.last;
@@ -1729,6 +1768,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
 
       final data = line.substring(5).trimLeft();
       if (data == '[DONE]') {
+        await sseIterator.cancel();
         // If model streamed tool_calls but didn't include finish_reason on prior chunks,
         // execute tool flow now and start follow-up request.
         if (onToolCall != null && toolAcc.isNotEmpty) {
@@ -1937,6 +1977,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
             String contentAccum = ''; // Accumulate content for this round
             String reasoningAccum = '';
             dynamic reasoningDetailsAccum;
+            TokenUsage? roundUsage;
             await for (final ch in _ensureTrailingNewline(s2)) {
               buf2 += ch;
               final lines2 = buf2.split('\n');
@@ -1952,8 +1993,10 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                 try {
                   final o = jsonDecode(d);
                   if (o is Map) {
-                    usage = _mergeOpenAICompatibleUsage(usage, o['usage']);
-                    if (usage != null) totalTokens = usage.totalTokens;
+                    roundUsage = _mergeOpenAICompatibleUsage(
+                      roundUsage,
+                      o['usage'],
+                    );
                   }
                   if (o is Map &&
                       o['choices'] is List &&
@@ -2121,6 +2164,12 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                   }
                 } catch (_) {}
               }
+            }
+
+            final finishedRound = roundUsage;
+            if (finishedRound != null) {
+              usage = (usage ?? const TokenUsage()).add(finishedRound);
+              totalTokens = usage.totalTokens;
             }
 
             // After this follow-up round finishes: if tool calls again, execute and loop
@@ -2576,6 +2625,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                 currentInput.addAll(responseOutputItems);
               }
               currentInput.addAll(followUpOutputs);
+              await sseIterator.cancel();
 
               // Iteratively request until the model stops issuing tool calls,
               // consistent with how Claude, Gemini and OpenAI Chat Completions
@@ -2665,6 +2715,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                     <int, Map<String, String>>{};
                 List<Map<String, dynamic>> outItems2 =
                     const <Map<String, dynamic>>[];
+                TokenUsage? roundUsage;
                 await for (final ch in _ensureTrailingNewline(s2)) {
                   buf2 += ch;
                   final lines2 = buf2.split('\n');
@@ -2736,13 +2787,15 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                         if (u2 != null) {
                           final inTok = (u2['input_tokens'] ?? 0) as int;
                           final outTok = (u2['output_tokens'] ?? 0) as int;
-                          usage = (usage ?? const TokenUsage()).merge(
+                          roundUsage = (roundUsage ?? const TokenUsage()).merge(
                             TokenUsage(
                               promptTokens: inTok,
                               completionTokens: outTok,
                             ),
                           );
-                          totalTokens = usage.totalTokens;
+                          totalTokens = (usage ?? const TokenUsage())
+                              .add(roundUsage)
+                              .totalTokens;
                         }
                         // capture output items
                         final out2 = o['response']?['output'];
@@ -2755,6 +2808,12 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                       }
                     } catch (_) {}
                   }
+                }
+
+                final finishedRound = roundUsage;
+                if (finishedRound != null) {
+                  usage = (usage ?? const TokenUsage()).add(finishedRound);
+                  totalTokens = usage.totalTokens;
                 }
 
                 if (respCalls2.isEmpty) {
@@ -3143,6 +3202,14 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
             finishReason == 'tool_calls' &&
             toolAcc.isNotEmpty &&
             onToolCall != null) {
+          if (usage == null &&
+              _shouldIncludeStreamingUsageOptions(
+                info.host,
+                upstreamModelId: upstreamModelId,
+              )) {
+            await drainRemainingUsage(lines.sublist(i + 1, lines.length - 1));
+          }
+          await sseIterator.cancel();
           // print('[ChatApi/XinLiu] Executing tools immediately (finishReason=tool_calls, toolAcc.size=${toolAcc.length})');
           // Some providers (like XinLiu) return tool_calls with finish_reason='tool_calls' but no [DONE]
           // Execute tools immediately in this case
@@ -3333,6 +3400,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
             String contentAccum = '';
             String reasoningAccum = '';
             dynamic reasoningDetailsAccum;
+            TokenUsage? roundUsage;
             await for (final ch in _ensureTrailingNewline(s2)) {
               buf2 += ch;
               final lines2 = buf2.split('\n');
@@ -3347,8 +3415,10 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                 try {
                   final o = jsonDecode(d);
                   if (o is Map) {
-                    usage = _mergeOpenAICompatibleUsage(usage, o['usage']);
-                    if (usage != null) totalTokens = usage.totalTokens;
+                    roundUsage = _mergeOpenAICompatibleUsage(
+                      roundUsage,
+                      o['usage'],
+                    );
                   }
                   if (o is Map &&
                       o['choices'] is List &&
@@ -3543,6 +3613,13 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                 } catch (_) {}
               }
             }
+
+            final finishedRound = roundUsage;
+            if (finishedRound != null) {
+              usage = (usage ?? const TokenUsage()).add(finishedRound);
+              totalTokens = usage.totalTokens;
+            }
+
             if (finishReason2 == 'tool_calls' || toolAcc2.isNotEmpty) {
               final calls2 = <Map<String, dynamic>>[];
               final callInfos2 = <ToolCallInfo>[];
@@ -3652,6 +3729,16 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
             // Some providers (like XinLiu/iflow.cn) may return tool_calls with finish_reason='stop'
             // and may not send a [DONE] marker. Execute tools immediately in this case.
             if (onToolCall != null && toolAcc.isNotEmpty) {
+              if (usage == null &&
+                  _shouldIncludeStreamingUsageOptions(
+                    info.host,
+                    upstreamModelId: upstreamModelId,
+                  )) {
+                await drainRemainingUsage(
+                  lines.sublist(i + 1, lines.length - 1),
+                );
+              }
+              await sseIterator.cancel();
               final calls = <Map<String, dynamic>>[];
               final callInfos = <ToolCallInfo>[];
               final toolMsgs = <Map<String, dynamic>>[];
@@ -3847,6 +3934,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                 String contentAccum = '';
                 String reasoningAccum = '';
                 dynamic reasoningDetailsAccum;
+                TokenUsage? roundUsage;
                 await for (final ch in _ensureTrailingNewline(s2)) {
                   buf2 += ch;
                   final lines2 = buf2.split('\n');
@@ -3861,8 +3949,10 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                     try {
                       final o = jsonDecode(d);
                       if (o is Map) {
-                        usage = _mergeOpenAICompatibleUsage(usage, o['usage']);
-                        if (usage != null) totalTokens = usage.totalTokens;
+                        roundUsage = _mergeOpenAICompatibleUsage(
+                          roundUsage,
+                          o['usage'],
+                        );
                       }
                       if (o is Map &&
                           o['choices'] is List &&
@@ -4033,6 +4123,13 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                     } catch (_) {}
                   }
                 }
+
+                final finishedRound = roundUsage;
+                if (finishedRound != null) {
+                  usage = (usage ?? const TokenUsage()).add(finishedRound);
+                  totalTokens = usage.totalTokens;
+                }
+
                 if (finishReason2 == 'tool_calls' || toolAcc2.isNotEmpty) {
                   final calls2 = <Map<String, dynamic>>[];
                   final callInfos2 = <ToolCallInfo>[];

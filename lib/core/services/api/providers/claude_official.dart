@@ -419,7 +419,7 @@ Stream<ChatStreamChunk> _sendClaudeStream(
       try {
         final u = (obj['usage'] as Map?)?.cast<String, dynamic>();
         if (u != null) {
-          totalUsage = (totalUsage ?? const TokenUsage()).merge(
+          totalUsage = (totalUsage ?? const TokenUsage()).add(
             _claudeUsageFromMap(u),
           );
         }
@@ -960,9 +960,9 @@ Stream<ChatStreamChunk> _sendClaudeStream(
       }
     }
 
-    // Merge usage across rounds for final token count
+    // Accumulate usage across rounds for final token count
     if (usage != null) {
-      totalUsage = (totalUsage ?? const TokenUsage()).merge(usage);
+      totalUsage = (totalUsage ?? const TokenUsage()).add(usage);
     }
 
     // If no client tool calls, decide whether to continue (pause_turn/server tool) or finalize
