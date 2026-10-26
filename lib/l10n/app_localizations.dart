@@ -10189,6 +10189,474 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{role} message #{index}: quick random debug sample for testing list rendering, scrolling stability, message grouping, and conversation history performance.'**
   String debugPageManyMessagesSeedText(String role, int index);
+
+  /// No description provided for @skillsPageHiddenLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'(hidden)'**
+  String get skillsPageHiddenLabel;
+
+  /// No description provided for @skillsPageHideTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get skillsPageHideTooltip;
+
+  /// No description provided for @skillsPageUnhideTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Unhide'**
+  String get skillsPageUnhideTooltip;
+
+  /// No description provided for @settingsPageAgentTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent Tools'**
+  String get settingsPageAgentTools;
+
+  /// No description provided for @agentToolsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Shell and Python environment used by system_tool on Windows. Skills and skill_hub run through the same Python.'**
+  String get agentToolsDescription;
+
+  /// No description provided for @agentToolsBashSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Shell (Git Bash)'**
+  String get agentToolsBashSection;
+
+  /// No description provided for @agentToolsBashPathLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Bash path'**
+  String get agentToolsBashPathLabel;
+
+  /// No description provided for @agentToolsBashPathHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. C:\\Program Files\\Git\\bin\\bash.exe; leave empty to detect Git Bash automatically'**
+  String get agentToolsBashPathHint;
+
+  /// No description provided for @agentToolsPythonSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Python'**
+  String get agentToolsPythonSection;
+
+  /// No description provided for @agentToolsPythonPathLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Python path'**
+  String get agentToolsPythonPathLabel;
+
+  /// No description provided for @agentToolsPythonPathHint.
+  ///
+  /// In en, this message translates to:
+  /// **'python.exe or a virtual environment folder; leave empty to use Python from PATH'**
+  String get agentToolsPythonPathHint;
+
+  /// No description provided for @agentToolsPickFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Select file…'**
+  String get agentToolsPickFile;
+
+  /// No description provided for @agentToolsPickFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Select folder…'**
+  String get agentToolsPickFolder;
+
+  /// No description provided for @settingsPageOpenViking.
+  ///
+  /// In en, this message translates to:
+  /// **'OpenViking Memory'**
+  String get settingsPageOpenViking;
+
+  /// No description provided for @settingsPageSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills'**
+  String get settingsPageSkills;
+
+  /// No description provided for @agentToolsDescriptionLinux.
+  ///
+  /// In en, this message translates to:
+  /// **'Linux detects bash automatically from the system; Python uses the path below or PATH. Skills and skill_hub share the same Python.'**
+  String get agentToolsDescriptionLinux;
+
+  /// No description provided for @agentToolsPythonPathHintLinux.
+  ///
+  /// In en, this message translates to:
+  /// **'python3 executable or a virtual environment folder (e.g. .venv); leave empty to use python3/python from PATH'**
+  String get agentToolsPythonPathHintLinux;
+
+  /// No description provided for @skillsPageSaveConfigSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository settings saved'**
+  String get skillsPageSaveConfigSaved;
+
+  /// No description provided for @skillsPageUnknownError.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown error'**
+  String get skillsPageUnknownError;
+
+  /// No description provided for @skillsPageInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed \'{name}\''**
+  String skillsPageInstalled(String name);
+
+  /// No description provided for @skillsPageDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete skill'**
+  String get skillsPageDeleteTitle;
+
+  /// No description provided for @skillsPageDeleteRemoteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete skill \'{name}\'? This cannot be undone (use disable to hide it temporarily).'**
+  String skillsPageDeleteRemoteConfirm(String name);
+
+  /// No description provided for @skillsPageCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get skillsPageCancel;
+
+  /// No description provided for @skillsPageDeleteAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get skillsPageDeleteAction;
+
+  /// No description provided for @skillsPageRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed \'{name}\''**
+  String skillsPageRemoved(String name);
+
+  /// No description provided for @skillsPageEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled \'{name}\''**
+  String skillsPageEnabled(String name);
+
+  /// No description provided for @skillsPageDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled \'{name}\''**
+  String skillsPageDisabled(String name);
+
+  /// No description provided for @skillsPageDeleteLocalConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete skill \'{name}\' ({path})? This cannot be undone.'**
+  String skillsPageDeleteLocalConfirm(String name, String path);
+
+  /// No description provided for @skillsPageOperationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Operation failed'**
+  String get skillsPageOperationFailed;
+
+  /// No description provided for @skillsPageDirHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scripts directory: {dir}'**
+  String skillsPageDirHint(String dir);
+
+  /// No description provided for @skillsPageEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No skills registered. Create <name>/skill.py under the scripts directory to register one.'**
+  String get skillsPageEmptyHint;
+
+  /// No description provided for @skillsPageRemoteSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote skill repository'**
+  String get skillsPageRemoteSection;
+
+  /// No description provided for @skillsPageRepoLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository (owner/repo)'**
+  String get skillsPageRepoLabel;
+
+  /// No description provided for @skillsPageBranchLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch'**
+  String get skillsPageBranchLabel;
+
+  /// No description provided for @skillsPageTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Type (github/gitea, auto if empty)'**
+  String get skillsPageTypeLabel;
+
+  /// No description provided for @skillsPageBaseLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Gitea base URL (e.g. https://gitea.example.com:3000)'**
+  String get skillsPageBaseLabel;
+
+  /// No description provided for @skillsPageTokenLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Access token (private repos, optional)'**
+  String get skillsPageTokenLabel;
+
+  /// No description provided for @skillsPageSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get skillsPageSave;
+
+  /// No description provided for @skillsPageBrowseRemote.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse remote skills'**
+  String get skillsPageBrowseRemote;
+
+  /// No description provided for @skillsPageLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Load failed: {error}'**
+  String skillsPageLoadFailed(String error);
+
+  /// No description provided for @skillsPageStateNotInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Not installed'**
+  String get skillsPageStateNotInstalled;
+
+  /// No description provided for @skillsPageStateInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get skillsPageStateInstalled;
+
+  /// No description provided for @skillsPageStateDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get skillsPageStateDisabled;
+
+  /// No description provided for @skillsPageRequires.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires: {requires}'**
+  String skillsPageRequires(String requires);
+
+  /// No description provided for @skillsPageInstallTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Install'**
+  String get skillsPageInstallTooltip;
+
+  /// No description provided for @skillsPageDeleteTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get skillsPageDeleteTooltip;
+
+  /// No description provided for @openVikingRecallQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Recall by question each turn'**
+  String get openVikingRecallQuestion;
+
+  /// No description provided for @openVikingRecallStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Recall by assistant reasoning/content'**
+  String get openVikingRecallStep;
+
+  /// No description provided for @openVikingCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto capture and commit conversation'**
+  String get openVikingCommit;
+
+  /// No description provided for @openVikingShowInjected.
+  ///
+  /// In en, this message translates to:
+  /// **'Show injections in chat'**
+  String get openVikingShowInjected;
+
+  /// No description provided for @openVikingUserTipsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'User tips'**
+  String get openVikingUserTipsSection;
+
+  /// No description provided for @openVikingUserTipsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom tips (injected once per conversation)'**
+  String get openVikingUserTipsLabel;
+
+  /// No description provided for @openVikingUserTipsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Keep answers concise'**
+  String get openVikingUserTipsHint;
+
+  /// No description provided for @openVikingConnectionSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection'**
+  String get openVikingConnectionSection;
+
+  /// No description provided for @openVikingServerUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Server URL'**
+  String get openVikingServerUrl;
+
+  /// No description provided for @openVikingApiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'API Key'**
+  String get openVikingApiKey;
+
+  /// No description provided for @openVikingUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get openVikingUsername;
+
+  /// No description provided for @openVikingSearchSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get openVikingSearchSection;
+
+  /// No description provided for @openVikingThreshold.
+  ///
+  /// In en, this message translates to:
+  /// **'Score threshold: {value}'**
+  String openVikingThreshold(String value);
+
+  /// No description provided for @openVikingDisplayCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Display count: {value}'**
+  String openVikingDisplayCount(String value);
+
+  /// No description provided for @openVikingFindSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto injection (find)'**
+  String get openVikingFindSection;
+
+  /// No description provided for @openVikingFindThreshold.
+  ///
+  /// In en, this message translates to:
+  /// **'find score threshold: {value}'**
+  String openVikingFindThreshold(String value);
+
+  /// No description provided for @openVikingFindLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'find display count: {value}'**
+  String openVikingFindLimit(String value);
+
+  /// No description provided for @openVikingPeerSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Peer settings (android mode)'**
+  String get openVikingPeerSection;
+
+  /// No description provided for @openVikingPeerId.
+  ///
+  /// In en, this message translates to:
+  /// **'Peer ID (empty = default)'**
+  String get openVikingPeerId;
+
+  /// No description provided for @openVikingWorkspacePeer.
+  ///
+  /// In en, this message translates to:
+  /// **'Derive workspace peer from package name'**
+  String get openVikingWorkspacePeer;
+
+  /// No description provided for @openVikingStatusConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'✔️ OpenViking is configured. Enable the @kelivo/openviking MCP service in the assistant to use memory tools and auto recall.'**
+  String get openVikingStatusConfigured;
+
+  /// No description provided for @openVikingStatusNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'⚠️ Configure the server URL and API Key'**
+  String get openVikingStatusNotConfigured;
+
+  /// No description provided for @settingsPageS3.
+  ///
+  /// In en, this message translates to:
+  /// **'Object Storage / S3'**
+  String get settingsPageS3;
+
+  /// No description provided for @s3PageConnectionSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection'**
+  String get s3PageConnectionSection;
+
+  /// No description provided for @s3PageShowSecret.
+  ///
+  /// In en, this message translates to:
+  /// **'Show'**
+  String get s3PageShowSecret;
+
+  /// No description provided for @s3PageHideSecret.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get s3PageHideSecret;
+
+  /// No description provided for @providerSiliconflowPromo.
+  ///
+  /// In en, this message translates to:
+  /// **'A disruptive bidding-based AI MaaS platform where prices are set by market supply and demand—no more high fixed pricing.'**
+  String get providerSiliconflowPromo;
+
+  /// No description provided for @providerOfficialSiteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Website: '**
+  String get providerOfficialSiteLabel;
+
+  /// No description provided for @providerSiliconflowBuiltinNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Free SiliconFlow models are built in and require no API key. To use more powerful models, apply for and configure your own API Key here.'**
+  String get providerSiliconflowBuiltinNote;
+
+  /// No description provided for @backupExperimentalWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This feature is still experimental.\nOnly assistants, conversations, providers, and files can be imported.\nSome providers require /v1 or /v1beta after the base URL.\nTo keep your data safe, back up before importing.\nDo you want to continue and choose a file?'**
+  String get backupExperimentalWarning;
+
+  /// No description provided for @settingsPageLlmRanking.
+  ///
+  /// In en, this message translates to:
+  /// **'LLM Leaderboard'**
+  String get settingsPageLlmRanking;
+
+  /// No description provided for @markdownCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get markdownCodeLabel;
 }
 
 class _AppLocalizationsDelegate

@@ -5320,6 +5320,276 @@ class AppLocalizationsZh extends AppLocalizations {
   String debugPageManyMessagesSeedText(String role, int index) {
     return '$role 消息 #$index：快速随机调试样例，用于测试列表渲染、滚动稳定性、消息分组和会话历史性能。';
   }
+
+  @override
+  String get skillsPageHiddenLabel => '(已隐藏)';
+
+  @override
+  String get skillsPageHideTooltip => '隐藏';
+
+  @override
+  String get skillsPageUnhideTooltip => '取消隐藏';
+
+  @override
+  String get settingsPageAgentTools => 'Agent 工具';
+
+  @override
+  String get agentToolsDescription =>
+      'Windows 下 system_tool 使用的 shell 与 Python 环境；skill 与 skill_hub 复用同一个 Python。';
+
+  @override
+  String get agentToolsBashSection => '命令行（Git Bash）';
+
+  @override
+  String get agentToolsBashPathLabel => 'Bash 路径';
+
+  @override
+  String get agentToolsBashPathHint =>
+      '例如 C:\\Program Files\\Git\\bin\\bash.exe；留空则自动查找 Git Bash';
+
+  @override
+  String get agentToolsPythonSection => 'Python';
+
+  @override
+  String get agentToolsPythonPathLabel => 'Python 路径';
+
+  @override
+  String get agentToolsPythonPathHint =>
+      'python.exe 或虚拟环境目录；留空则使用 PATH 中的 Python';
+
+  @override
+  String get agentToolsPickFile => '选择文件…';
+
+  @override
+  String get agentToolsPickFolder => '选择目录…';
+
+  @override
+  String get settingsPageOpenViking => 'OpenViking 记忆';
+
+  @override
+  String get settingsPageSkills => 'Skill 管理';
+
+  @override
+  String get agentToolsDescriptionLinux =>
+      'Linux 下 shell 自动使用系统 bash；Python 使用下方路径或 PATH。skill 与 skill_hub 复用同一个 Python。';
+
+  @override
+  String get agentToolsPythonPathHintLinux =>
+      'python3 可执行文件或虚拟环境目录（如 .venv）；留空则使用 PATH 中的 python3/python';
+
+  @override
+  String get skillsPageSaveConfigSaved => '已保存仓库配置';
+
+  @override
+  String get skillsPageUnknownError => '未知错误';
+
+  @override
+  String skillsPageInstalled(String name) {
+    return '已安装 \'$name\'';
+  }
+
+  @override
+  String get skillsPageDeleteTitle => '删除 skill';
+
+  @override
+  String skillsPageDeleteRemoteConfirm(String name) {
+    return '彻底删除 skill \'$name\'？此操作不可撤销（仅需临时隐藏请用“下线”）。';
+  }
+
+  @override
+  String get skillsPageCancel => '取消';
+
+  @override
+  String get skillsPageDeleteAction => '删除';
+
+  @override
+  String skillsPageRemoved(String name) {
+    return '已删除 \'$name\'';
+  }
+
+  @override
+  String skillsPageEnabled(String name) {
+    return '已启用 \'$name\'';
+  }
+
+  @override
+  String skillsPageDisabled(String name) {
+    return '已下线 \'$name\'';
+  }
+
+  @override
+  String skillsPageDeleteLocalConfirm(String name, String path) {
+    return '确定删除 skill \'$name\'（$path）？此操作不可撤销。';
+  }
+
+  @override
+  String get skillsPageOperationFailed => '操作失败';
+
+  @override
+  String skillsPageDirHint(String dir) {
+    return '脚本目录：$dir';
+  }
+
+  @override
+  String get skillsPageEmptyHint => '暂无已注册 skill。在脚本目录下新建 <名称>/skill.py 即自动注册。';
+
+  @override
+  String get skillsPageRemoteSection => '远程技能仓库';
+
+  @override
+  String get skillsPageRepoLabel => '仓库 (owner/repo)';
+
+  @override
+  String get skillsPageBranchLabel => '分支';
+
+  @override
+  String get skillsPageTypeLabel => '类型 (github/gitea，留空自动)';
+
+  @override
+  String get skillsPageBaseLabel =>
+      'Gitea 基址 (如 https://gitea.example.com:3000)';
+
+  @override
+  String get skillsPageTokenLabel => '访问令牌（私有仓库，可选）';
+
+  @override
+  String get skillsPageSave => '保存';
+
+  @override
+  String get skillsPageBrowseRemote => '浏览远程技能';
+
+  @override
+  String skillsPageLoadFailed(String error) {
+    return '加载失败：$error';
+  }
+
+  @override
+  String get skillsPageStateNotInstalled => '未安装';
+
+  @override
+  String get skillsPageStateInstalled => '已安装';
+
+  @override
+  String get skillsPageStateDisabled => '已下线';
+
+  @override
+  String skillsPageRequires(String requires) {
+    return '依赖: $requires';
+  }
+
+  @override
+  String get skillsPageInstallTooltip => '安装';
+
+  @override
+  String get skillsPageDeleteTooltip => '删除';
+
+  @override
+  String get openVikingRecallQuestion => '每轮按问题检索';
+
+  @override
+  String get openVikingRecallStep => '每步按助手正文/推理检索';
+
+  @override
+  String get openVikingCommit => '自动抓取并提交对话';
+
+  @override
+  String get openVikingShowInjected => '在聊天中显示注入信息';
+
+  @override
+  String get openVikingUserTipsSection => '用户提示';
+
+  @override
+  String get openVikingUserTipsLabel => '自定义提示（每会话注入一次）';
+
+  @override
+  String get openVikingUserTipsHint => '例如：回答尽量简洁';
+
+  @override
+  String get openVikingConnectionSection => '连接设置';
+
+  @override
+  String get openVikingServerUrl => '服务器地址';
+
+  @override
+  String get openVikingApiKey => 'API Key';
+
+  @override
+  String get openVikingUsername => '用户名';
+
+  @override
+  String get openVikingSearchSection => '搜索设置';
+
+  @override
+  String openVikingThreshold(String value) {
+    return '分数阈值: $value';
+  }
+
+  @override
+  String openVikingDisplayCount(String value) {
+    return '显示条数: $value';
+  }
+
+  @override
+  String get openVikingFindSection => '自动注入(find)';
+
+  @override
+  String openVikingFindThreshold(String value) {
+    return 'find 分数阈值: $value';
+  }
+
+  @override
+  String openVikingFindLimit(String value) {
+    return 'find 显示条数: $value';
+  }
+
+  @override
+  String get openVikingPeerSection => 'Peer 设置（android 模式）';
+
+  @override
+  String get openVikingPeerId => 'Peer ID（留空=default）';
+
+  @override
+  String get openVikingWorkspacePeer => '按包名派生 workspace peer';
+
+  @override
+  String get openVikingStatusConfigured =>
+      '✔️ OpenViking 已配置。在助手中启用 MCP 服务 @kelivo/openviking 即可使用记忆工具与自动召回';
+
+  @override
+  String get openVikingStatusNotConfigured => '⚠️ 请配置服务器地址和 API Key';
+
+  @override
+  String get settingsPageS3 => '对象存储 / S3';
+
+  @override
+  String get s3PageConnectionSection => '连接设置';
+
+  @override
+  String get s3PageShowSecret => '显示';
+
+  @override
+  String get s3PageHideSecret => '隐藏';
+
+  @override
+  String get providerSiliconflowPromo =>
+      '革命性竞价 AI MaaS 平台，价格由市场供需决定，告别高成本固定定价。';
+
+  @override
+  String get providerOfficialSiteLabel => '官网：';
+
+  @override
+  String get providerSiliconflowBuiltinNote =>
+      '已内置硅基流动的免费模型，无需 API Key。若需更强大的模型，请申请并在此配置你自己的 API Key。';
+
+  @override
+  String get backupExperimentalWarning =>
+      '此功能目前仍处于实验阶段。\n目前仅能导入助手，对话内容，供应商和文件，\n一些供应商需要在baseurl后面添加/v1 or /v1beta。 \n为确保数据安全，建议在导入前先执行备份。\n是否已知晓并继续选择文件？';
+
+  @override
+  String get settingsPageLlmRanking => 'LLM排行榜';
+
+  @override
+  String get markdownCodeLabel => '代码';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -10638,6 +10908,276 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String debugPageManyMessagesSeedText(String role, int index) {
     return '$role 消息 #$index：快速随机调试样例，用于测试列表渲染、滚动稳定性、消息分组和会话历史性能。';
   }
+
+  @override
+  String get skillsPageHiddenLabel => '(已隐藏)';
+
+  @override
+  String get skillsPageHideTooltip => '隐藏';
+
+  @override
+  String get skillsPageUnhideTooltip => '取消隐藏';
+
+  @override
+  String get settingsPageAgentTools => 'Agent 工具';
+
+  @override
+  String get agentToolsDescription =>
+      'Windows 下 system_tool 使用的 shell 与 Python 环境；skill 与 skill_hub 复用同一个 Python。';
+
+  @override
+  String get agentToolsBashSection => '命令行（Git Bash）';
+
+  @override
+  String get agentToolsBashPathLabel => 'Bash 路径';
+
+  @override
+  String get agentToolsBashPathHint =>
+      '例如 C:\\Program Files\\Git\\bin\\bash.exe；留空则自动查找 Git Bash';
+
+  @override
+  String get agentToolsPythonSection => 'Python';
+
+  @override
+  String get agentToolsPythonPathLabel => 'Python 路径';
+
+  @override
+  String get agentToolsPythonPathHint =>
+      'python.exe 或虚拟环境目录；留空则使用 PATH 中的 Python';
+
+  @override
+  String get agentToolsPickFile => '选择文件…';
+
+  @override
+  String get agentToolsPickFolder => '选择目录…';
+
+  @override
+  String get settingsPageOpenViking => 'OpenViking 记忆';
+
+  @override
+  String get settingsPageSkills => 'Skill 管理';
+
+  @override
+  String get agentToolsDescriptionLinux =>
+      'Linux 下 shell 自动使用系统 bash；Python 使用下方路径或 PATH。skill 与 skill_hub 复用同一个 Python。';
+
+  @override
+  String get agentToolsPythonPathHintLinux =>
+      'python3 可执行文件或虚拟环境目录（如 .venv）；留空则使用 PATH 中的 python3/python';
+
+  @override
+  String get skillsPageSaveConfigSaved => '已保存仓库配置';
+
+  @override
+  String get skillsPageUnknownError => '未知错误';
+
+  @override
+  String skillsPageInstalled(String name) {
+    return '已安装 \'$name\'';
+  }
+
+  @override
+  String get skillsPageDeleteTitle => '删除 skill';
+
+  @override
+  String skillsPageDeleteRemoteConfirm(String name) {
+    return '彻底删除 skill \'$name\'？此操作不可撤销（仅需临时隐藏请用“下线”）。';
+  }
+
+  @override
+  String get skillsPageCancel => '取消';
+
+  @override
+  String get skillsPageDeleteAction => '删除';
+
+  @override
+  String skillsPageRemoved(String name) {
+    return '已删除 \'$name\'';
+  }
+
+  @override
+  String skillsPageEnabled(String name) {
+    return '已启用 \'$name\'';
+  }
+
+  @override
+  String skillsPageDisabled(String name) {
+    return '已下线 \'$name\'';
+  }
+
+  @override
+  String skillsPageDeleteLocalConfirm(String name, String path) {
+    return '确定删除 skill \'$name\'（$path）？此操作不可撤销。';
+  }
+
+  @override
+  String get skillsPageOperationFailed => '操作失败';
+
+  @override
+  String skillsPageDirHint(String dir) {
+    return '脚本目录：$dir';
+  }
+
+  @override
+  String get skillsPageEmptyHint => '暂无已注册 skill。在脚本目录下新建 <名称>/skill.py 即自动注册。';
+
+  @override
+  String get skillsPageRemoteSection => '远程技能仓库';
+
+  @override
+  String get skillsPageRepoLabel => '仓库 (owner/repo)';
+
+  @override
+  String get skillsPageBranchLabel => '分支';
+
+  @override
+  String get skillsPageTypeLabel => '类型 (github/gitea，留空自动)';
+
+  @override
+  String get skillsPageBaseLabel =>
+      'Gitea 基址 (如 https://gitea.example.com:3000)';
+
+  @override
+  String get skillsPageTokenLabel => '访问令牌（私有仓库，可选）';
+
+  @override
+  String get skillsPageSave => '保存';
+
+  @override
+  String get skillsPageBrowseRemote => '浏览远程技能';
+
+  @override
+  String skillsPageLoadFailed(String error) {
+    return '加载失败：$error';
+  }
+
+  @override
+  String get skillsPageStateNotInstalled => '未安装';
+
+  @override
+  String get skillsPageStateInstalled => '已安装';
+
+  @override
+  String get skillsPageStateDisabled => '已下线';
+
+  @override
+  String skillsPageRequires(String requires) {
+    return '依赖: $requires';
+  }
+
+  @override
+  String get skillsPageInstallTooltip => '安装';
+
+  @override
+  String get skillsPageDeleteTooltip => '删除';
+
+  @override
+  String get openVikingRecallQuestion => '每轮按问题检索';
+
+  @override
+  String get openVikingRecallStep => '每步按助手正文/推理检索';
+
+  @override
+  String get openVikingCommit => '自动抓取并提交对话';
+
+  @override
+  String get openVikingShowInjected => '在聊天中显示注入信息';
+
+  @override
+  String get openVikingUserTipsSection => '用户提示';
+
+  @override
+  String get openVikingUserTipsLabel => '自定义提示（每会话注入一次）';
+
+  @override
+  String get openVikingUserTipsHint => '例如：回答尽量简洁';
+
+  @override
+  String get openVikingConnectionSection => '连接设置';
+
+  @override
+  String get openVikingServerUrl => '服务器地址';
+
+  @override
+  String get openVikingApiKey => 'API Key';
+
+  @override
+  String get openVikingUsername => '用户名';
+
+  @override
+  String get openVikingSearchSection => '搜索设置';
+
+  @override
+  String openVikingThreshold(String value) {
+    return '分数阈值: $value';
+  }
+
+  @override
+  String openVikingDisplayCount(String value) {
+    return '显示条数: $value';
+  }
+
+  @override
+  String get openVikingFindSection => '自动注入(find)';
+
+  @override
+  String openVikingFindThreshold(String value) {
+    return 'find 分数阈值: $value';
+  }
+
+  @override
+  String openVikingFindLimit(String value) {
+    return 'find 显示条数: $value';
+  }
+
+  @override
+  String get openVikingPeerSection => 'Peer 设置（android 模式）';
+
+  @override
+  String get openVikingPeerId => 'Peer ID（留空=default）';
+
+  @override
+  String get openVikingWorkspacePeer => '按包名派生 workspace peer';
+
+  @override
+  String get openVikingStatusConfigured =>
+      '✔️ OpenViking 已配置。在助手中启用 MCP 服务 @kelivo/openviking 即可使用记忆工具与自动召回';
+
+  @override
+  String get openVikingStatusNotConfigured => '⚠️ 请配置服务器地址和 API Key';
+
+  @override
+  String get settingsPageS3 => '对象存储 / S3';
+
+  @override
+  String get s3PageConnectionSection => '连接设置';
+
+  @override
+  String get s3PageShowSecret => '显示';
+
+  @override
+  String get s3PageHideSecret => '隐藏';
+
+  @override
+  String get providerSiliconflowPromo =>
+      '革命性竞价 AI MaaS 平台，价格由市场供需决定，告别高成本固定定价。';
+
+  @override
+  String get providerOfficialSiteLabel => '官网：';
+
+  @override
+  String get providerSiliconflowBuiltinNote =>
+      '已内置硅基流动的免费模型，无需 API Key。若需更强大的模型，请申请并在此配置你自己的 API Key。';
+
+  @override
+  String get backupExperimentalWarning =>
+      '此功能目前仍处于实验阶段。\n目前仅能导入助手，对话内容，供应商和文件，\n一些供应商需要在baseurl后面添加/v1 or /v1beta。 \n为确保数据安全，建议在导入前先执行备份。\n是否已知晓并继续选择文件？';
+
+  @override
+  String get settingsPageLlmRanking => 'LLM排行榜';
+
+  @override
+  String get markdownCodeLabel => '代码';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -15956,4 +16496,274 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String debugPageManyMessagesSeedText(String role, int index) {
     return '$role 訊息 #$index：快速隨機調試樣例，用於測試列表渲染、捲動穩定性、訊息分組和會話歷史效能。';
   }
+
+  @override
+  String get skillsPageHiddenLabel => '(已隱藏)';
+
+  @override
+  String get skillsPageHideTooltip => '隱藏';
+
+  @override
+  String get skillsPageUnhideTooltip => '取消隱藏';
+
+  @override
+  String get settingsPageAgentTools => 'Agent 工具';
+
+  @override
+  String get agentToolsDescription =>
+      'Windows 下 system_tool 使用的 shell 與 Python 環境；skill 與 skill_hub 複用同一個 Python。';
+
+  @override
+  String get agentToolsBashSection => '命令列（Git Bash）';
+
+  @override
+  String get agentToolsBashPathLabel => 'Bash 路徑';
+
+  @override
+  String get agentToolsBashPathHint =>
+      '例如 C:\\Program Files\\Git\\bin\\bash.exe；留空則自動尋找 Git Bash';
+
+  @override
+  String get agentToolsPythonSection => 'Python';
+
+  @override
+  String get agentToolsPythonPathLabel => 'Python 路徑';
+
+  @override
+  String get agentToolsPythonPathHint =>
+      'python.exe 或虛擬環境目錄；留空則使用 PATH 中的 Python';
+
+  @override
+  String get agentToolsPickFile => '選擇檔案…';
+
+  @override
+  String get agentToolsPickFolder => '選擇資料夾…';
+
+  @override
+  String get settingsPageOpenViking => 'OpenViking 記憶';
+
+  @override
+  String get settingsPageSkills => 'Skill 管理';
+
+  @override
+  String get agentToolsDescriptionLinux =>
+      'Linux 下 shell 自動使用系統 bash；Python 使用下方路徑或 PATH。skill 與 skill_hub 複用同一個 Python。';
+
+  @override
+  String get agentToolsPythonPathHintLinux =>
+      'python3 執行檔或虛擬環境目錄（如 .venv）；留空則使用 PATH 中的 python3/python';
+
+  @override
+  String get skillsPageSaveConfigSaved => '已儲存倉庫設定';
+
+  @override
+  String get skillsPageUnknownError => '未知錯誤';
+
+  @override
+  String skillsPageInstalled(String name) {
+    return '已安裝 \'$name\'';
+  }
+
+  @override
+  String get skillsPageDeleteTitle => '刪除 skill';
+
+  @override
+  String skillsPageDeleteRemoteConfirm(String name) {
+    return '徹底刪除 skill \'$name\'？此操作無法復原（僅需暫時隱藏請用「下線」）。';
+  }
+
+  @override
+  String get skillsPageCancel => '取消';
+
+  @override
+  String get skillsPageDeleteAction => '刪除';
+
+  @override
+  String skillsPageRemoved(String name) {
+    return '已刪除 \'$name\'';
+  }
+
+  @override
+  String skillsPageEnabled(String name) {
+    return '已啟用 \'$name\'';
+  }
+
+  @override
+  String skillsPageDisabled(String name) {
+    return '已下線 \'$name\'';
+  }
+
+  @override
+  String skillsPageDeleteLocalConfirm(String name, String path) {
+    return '確定刪除 skill \'$name\'（$path）？此操作無法復原。';
+  }
+
+  @override
+  String get skillsPageOperationFailed => '操作失敗';
+
+  @override
+  String skillsPageDirHint(String dir) {
+    return '腳本目錄：$dir';
+  }
+
+  @override
+  String get skillsPageEmptyHint => '暫無已註冊 skill。在腳本目錄下新建 <名稱>/skill.py 即自動註冊。';
+
+  @override
+  String get skillsPageRemoteSection => '遠端技能倉庫';
+
+  @override
+  String get skillsPageRepoLabel => '倉庫 (owner/repo)';
+
+  @override
+  String get skillsPageBranchLabel => '分支';
+
+  @override
+  String get skillsPageTypeLabel => '類型 (github/gitea，留空自動)';
+
+  @override
+  String get skillsPageBaseLabel =>
+      'Gitea 基址 (如 https://gitea.example.com:3000)';
+
+  @override
+  String get skillsPageTokenLabel => '存取權杖（私有倉庫，可選）';
+
+  @override
+  String get skillsPageSave => '儲存';
+
+  @override
+  String get skillsPageBrowseRemote => '瀏覽遠端技能';
+
+  @override
+  String skillsPageLoadFailed(String error) {
+    return '載入失敗：$error';
+  }
+
+  @override
+  String get skillsPageStateNotInstalled => '未安裝';
+
+  @override
+  String get skillsPageStateInstalled => '已安裝';
+
+  @override
+  String get skillsPageStateDisabled => '已下線';
+
+  @override
+  String skillsPageRequires(String requires) {
+    return '依賴: $requires';
+  }
+
+  @override
+  String get skillsPageInstallTooltip => '安裝';
+
+  @override
+  String get skillsPageDeleteTooltip => '刪除';
+
+  @override
+  String get openVikingRecallQuestion => '每輪按問題檢索';
+
+  @override
+  String get openVikingRecallStep => '每步按助手正文/推理檢索';
+
+  @override
+  String get openVikingCommit => '自動擷取並提交對話';
+
+  @override
+  String get openVikingShowInjected => '在聊天中顯示注入資訊';
+
+  @override
+  String get openVikingUserTipsSection => '使用者提示';
+
+  @override
+  String get openVikingUserTipsLabel => '自訂提示（每對話注入一次）';
+
+  @override
+  String get openVikingUserTipsHint => '例如：回答盡量簡潔';
+
+  @override
+  String get openVikingConnectionSection => '連線設定';
+
+  @override
+  String get openVikingServerUrl => '伺服器位址';
+
+  @override
+  String get openVikingApiKey => 'API Key';
+
+  @override
+  String get openVikingUsername => '使用者名稱';
+
+  @override
+  String get openVikingSearchSection => '搜尋設定';
+
+  @override
+  String openVikingThreshold(String value) {
+    return '分數閾值: $value';
+  }
+
+  @override
+  String openVikingDisplayCount(String value) {
+    return '顯示條數: $value';
+  }
+
+  @override
+  String get openVikingFindSection => '自動注入(find)';
+
+  @override
+  String openVikingFindThreshold(String value) {
+    return 'find 分數閾值: $value';
+  }
+
+  @override
+  String openVikingFindLimit(String value) {
+    return 'find 顯示條數: $value';
+  }
+
+  @override
+  String get openVikingPeerSection => 'Peer 設定（android 模式）';
+
+  @override
+  String get openVikingPeerId => 'Peer ID（留空=default）';
+
+  @override
+  String get openVikingWorkspacePeer => '按套件名派生 workspace peer';
+
+  @override
+  String get openVikingStatusConfigured =>
+      '✔️ OpenViking 已設定。在助理中啟用 MCP 服務 @kelivo/openviking 即可使用記憶工具與自動召回';
+
+  @override
+  String get openVikingStatusNotConfigured => '⚠️ 請設定伺服器位址和 API Key';
+
+  @override
+  String get settingsPageS3 => '物件儲存 / S3';
+
+  @override
+  String get s3PageConnectionSection => '連線設定';
+
+  @override
+  String get s3PageShowSecret => '顯示';
+
+  @override
+  String get s3PageHideSecret => '隱藏';
+
+  @override
+  String get providerSiliconflowPromo =>
+      '革命性競價 AI MaaS 平台，價格由市場供需決定，告別高成本固定定價。';
+
+  @override
+  String get providerOfficialSiteLabel => '官網：';
+
+  @override
+  String get providerSiliconflowBuiltinNote =>
+      '已內建矽基流動的免費模型，無需 API Key。若需更強大的模型，請申請並在此設定你自己的 API Key。';
+
+  @override
+  String get backupExperimentalWarning =>
+      '此功能目前仍處於實驗階段。\n目前僅能匯入助理、對話內容、供應商和檔案，\n部分供應商需要在 baseurl 後面加上 /v1 或 /v1beta。\n為確保資料安全，建議在匯入前先執行備份。\n是否已知曉並繼續選擇檔案？';
+
+  @override
+  String get settingsPageLlmRanking => 'LLM排行榜';
+
+  @override
+  String get markdownCodeLabel => '程式碼';
 }

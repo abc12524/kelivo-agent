@@ -5537,4 +5537,278 @@ class AppLocalizationsEn extends AppLocalizations {
   String debugPageManyMessagesSeedText(String role, int index) {
     return '$role message #$index: quick random debug sample for testing list rendering, scrolling stability, message grouping, and conversation history performance.';
   }
+
+  @override
+  String get skillsPageHiddenLabel => '(hidden)';
+
+  @override
+  String get skillsPageHideTooltip => 'Hide';
+
+  @override
+  String get skillsPageUnhideTooltip => 'Unhide';
+
+  @override
+  String get settingsPageAgentTools => 'Agent Tools';
+
+  @override
+  String get agentToolsDescription =>
+      'Shell and Python environment used by system_tool on Windows. Skills and skill_hub run through the same Python.';
+
+  @override
+  String get agentToolsBashSection => 'Shell (Git Bash)';
+
+  @override
+  String get agentToolsBashPathLabel => 'Bash path';
+
+  @override
+  String get agentToolsBashPathHint =>
+      'e.g. C:\\Program Files\\Git\\bin\\bash.exe; leave empty to detect Git Bash automatically';
+
+  @override
+  String get agentToolsPythonSection => 'Python';
+
+  @override
+  String get agentToolsPythonPathLabel => 'Python path';
+
+  @override
+  String get agentToolsPythonPathHint =>
+      'python.exe or a virtual environment folder; leave empty to use Python from PATH';
+
+  @override
+  String get agentToolsPickFile => 'Select file…';
+
+  @override
+  String get agentToolsPickFolder => 'Select folder…';
+
+  @override
+  String get settingsPageOpenViking => 'OpenViking Memory';
+
+  @override
+  String get settingsPageSkills => 'Skills';
+
+  @override
+  String get agentToolsDescriptionLinux =>
+      'Linux detects bash automatically from the system; Python uses the path below or PATH. Skills and skill_hub share the same Python.';
+
+  @override
+  String get agentToolsPythonPathHintLinux =>
+      'python3 executable or a virtual environment folder (e.g. .venv); leave empty to use python3/python from PATH';
+
+  @override
+  String get skillsPageSaveConfigSaved => 'Repository settings saved';
+
+  @override
+  String get skillsPageUnknownError => 'Unknown error';
+
+  @override
+  String skillsPageInstalled(String name) {
+    return 'Installed \'$name\'';
+  }
+
+  @override
+  String get skillsPageDeleteTitle => 'Delete skill';
+
+  @override
+  String skillsPageDeleteRemoteConfirm(String name) {
+    return 'Permanently delete skill \'$name\'? This cannot be undone (use disable to hide it temporarily).';
+  }
+
+  @override
+  String get skillsPageCancel => 'Cancel';
+
+  @override
+  String get skillsPageDeleteAction => 'Delete';
+
+  @override
+  String skillsPageRemoved(String name) {
+    return 'Removed \'$name\'';
+  }
+
+  @override
+  String skillsPageEnabled(String name) {
+    return 'Enabled \'$name\'';
+  }
+
+  @override
+  String skillsPageDisabled(String name) {
+    return 'Disabled \'$name\'';
+  }
+
+  @override
+  String skillsPageDeleteLocalConfirm(String name, String path) {
+    return 'Delete skill \'$name\' ($path)? This cannot be undone.';
+  }
+
+  @override
+  String get skillsPageOperationFailed => 'Operation failed';
+
+  @override
+  String skillsPageDirHint(String dir) {
+    return 'Scripts directory: $dir';
+  }
+
+  @override
+  String get skillsPageEmptyHint =>
+      'No skills registered. Create <name>/skill.py under the scripts directory to register one.';
+
+  @override
+  String get skillsPageRemoteSection => 'Remote skill repository';
+
+  @override
+  String get skillsPageRepoLabel => 'Repository (owner/repo)';
+
+  @override
+  String get skillsPageBranchLabel => 'Branch';
+
+  @override
+  String get skillsPageTypeLabel => 'Type (github/gitea, auto if empty)';
+
+  @override
+  String get skillsPageBaseLabel =>
+      'Gitea base URL (e.g. https://gitea.example.com:3000)';
+
+  @override
+  String get skillsPageTokenLabel => 'Access token (private repos, optional)';
+
+  @override
+  String get skillsPageSave => 'Save';
+
+  @override
+  String get skillsPageBrowseRemote => 'Browse remote skills';
+
+  @override
+  String skillsPageLoadFailed(String error) {
+    return 'Load failed: $error';
+  }
+
+  @override
+  String get skillsPageStateNotInstalled => 'Not installed';
+
+  @override
+  String get skillsPageStateInstalled => 'Installed';
+
+  @override
+  String get skillsPageStateDisabled => 'Disabled';
+
+  @override
+  String skillsPageRequires(String requires) {
+    return 'Requires: $requires';
+  }
+
+  @override
+  String get skillsPageInstallTooltip => 'Install';
+
+  @override
+  String get skillsPageDeleteTooltip => 'Delete';
+
+  @override
+  String get openVikingRecallQuestion => 'Recall by question each turn';
+
+  @override
+  String get openVikingRecallStep => 'Recall by assistant reasoning/content';
+
+  @override
+  String get openVikingCommit => 'Auto capture and commit conversation';
+
+  @override
+  String get openVikingShowInjected => 'Show injections in chat';
+
+  @override
+  String get openVikingUserTipsSection => 'User tips';
+
+  @override
+  String get openVikingUserTipsLabel =>
+      'Custom tips (injected once per conversation)';
+
+  @override
+  String get openVikingUserTipsHint => 'e.g. Keep answers concise';
+
+  @override
+  String get openVikingConnectionSection => 'Connection';
+
+  @override
+  String get openVikingServerUrl => 'Server URL';
+
+  @override
+  String get openVikingApiKey => 'API Key';
+
+  @override
+  String get openVikingUsername => 'Username';
+
+  @override
+  String get openVikingSearchSection => 'Search';
+
+  @override
+  String openVikingThreshold(String value) {
+    return 'Score threshold: $value';
+  }
+
+  @override
+  String openVikingDisplayCount(String value) {
+    return 'Display count: $value';
+  }
+
+  @override
+  String get openVikingFindSection => 'Auto injection (find)';
+
+  @override
+  String openVikingFindThreshold(String value) {
+    return 'find score threshold: $value';
+  }
+
+  @override
+  String openVikingFindLimit(String value) {
+    return 'find display count: $value';
+  }
+
+  @override
+  String get openVikingPeerSection => 'Peer settings (android mode)';
+
+  @override
+  String get openVikingPeerId => 'Peer ID (empty = default)';
+
+  @override
+  String get openVikingWorkspacePeer =>
+      'Derive workspace peer from package name';
+
+  @override
+  String get openVikingStatusConfigured =>
+      '✔️ OpenViking is configured. Enable the @kelivo/openviking MCP service in the assistant to use memory tools and auto recall.';
+
+  @override
+  String get openVikingStatusNotConfigured =>
+      '⚠️ Configure the server URL and API Key';
+
+  @override
+  String get settingsPageS3 => 'Object Storage / S3';
+
+  @override
+  String get s3PageConnectionSection => 'Connection';
+
+  @override
+  String get s3PageShowSecret => 'Show';
+
+  @override
+  String get s3PageHideSecret => 'Hide';
+
+  @override
+  String get providerSiliconflowPromo =>
+      'A disruptive bidding-based AI MaaS platform where prices are set by market supply and demand—no more high fixed pricing.';
+
+  @override
+  String get providerOfficialSiteLabel => 'Website: ';
+
+  @override
+  String get providerSiliconflowBuiltinNote =>
+      'Free SiliconFlow models are built in and require no API key. To use more powerful models, apply for and configure your own API Key here.';
+
+  @override
+  String get backupExperimentalWarning =>
+      'This feature is still experimental.\nOnly assistants, conversations, providers, and files can be imported.\nSome providers require /v1 or /v1beta after the base URL.\nTo keep your data safe, back up before importing.\nDo you want to continue and choose a file?';
+
+  @override
+  String get settingsPageLlmRanking => 'LLM Leaderboard';
+
+  @override
+  String get markdownCodeLabel => 'Code';
 }
