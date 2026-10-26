@@ -1727,9 +1727,10 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
     try {
       final o = jsonDecode(data);
       if (o is Map) {
-        usage = _mergeOpenAICompatibleUsage(usage, o['usage']);
-        if (usage != null) {
-          totalTokens = usage.totalTokens;
+        final merged = _mergeOpenAICompatibleUsage(usage, o['usage']);
+        usage = merged;
+        if (merged != null) {
+          totalTokens = merged.totalTokens;
           return true;
         }
       }
@@ -2168,8 +2169,9 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
 
             final finishedRound = roundUsage;
             if (finishedRound != null) {
-              usage = (usage ?? const TokenUsage()).add(finishedRound);
-              totalTokens = usage.totalTokens;
+              final merged = (usage ?? const TokenUsage()).add(finishedRound);
+              usage = merged;
+              totalTokens = merged.totalTokens;
             }
 
             // After this follow-up round finishes: if tool calls again, execute and loop
@@ -2406,10 +2408,11 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
             if (u != null) {
               final inTok = (u['input_tokens'] ?? 0) as int;
               final outTok = (u['output_tokens'] ?? 0) as int;
-              usage = (usage ?? const TokenUsage()).merge(
+              final merged = (usage ?? const TokenUsage()).merge(
                 TokenUsage(promptTokens: inTok, completionTokens: outTok),
               );
-              totalTokens = usage.totalTokens;
+              usage = merged;
+              totalTokens = merged.totalTokens;
             }
             // Extract web search citations from final output (Responses API)
             try {
@@ -2812,8 +2815,11 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
 
                 final finishedRound = roundUsage;
                 if (finishedRound != null) {
-                  usage = (usage ?? const TokenUsage()).add(finishedRound);
-                  totalTokens = usage.totalTokens;
+                  final merged = (usage ?? const TokenUsage()).add(
+                    finishedRound,
+                  );
+                  usage = merged;
+                  totalTokens = merged.totalTokens;
                 }
 
                 if (respCalls2.isEmpty) {
@@ -2958,10 +2964,11 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
               if (u != null) {
                 final inTok = (u['input_tokens'] ?? 0) as int;
                 final outTok = (u['output_tokens'] ?? 0) as int;
-                usage = (usage ?? const TokenUsage()).merge(
+                final merged = (usage ?? const TokenUsage()).merge(
                   TokenUsage(promptTokens: inTok, completionTokens: outTok),
                 );
-                totalTokens = usage.totalTokens;
+                usage = merged;
+                totalTokens = merged.totalTokens;
               }
             }
           }
@@ -3174,8 +3181,9 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
               finishReason = 'tool_calls';
             }
           }
-          usage = _mergeOpenAICompatibleUsage(usage, json['usage']);
-          if (usage != null) totalTokens = usage.totalTokens;
+          final merged = _mergeOpenAICompatibleUsage(usage, json['usage']);
+          usage = merged;
+          if (merged != null) totalTokens = merged.totalTokens;
         }
 
         if (content.isNotEmpty || (reasoning?.isNotEmpty ?? false)) {
@@ -3616,8 +3624,9 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
 
             final finishedRound = roundUsage;
             if (finishedRound != null) {
-              usage = (usage ?? const TokenUsage()).add(finishedRound);
-              totalTokens = usage.totalTokens;
+              final merged = (usage ?? const TokenUsage()).add(finishedRound);
+              usage = merged;
+              totalTokens = merged.totalTokens;
             }
 
             if (finishReason2 == 'tool_calls' || toolAcc2.isNotEmpty) {
@@ -4126,8 +4135,11 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
 
                 final finishedRound = roundUsage;
                 if (finishedRound != null) {
-                  usage = (usage ?? const TokenUsage()).add(finishedRound);
-                  totalTokens = usage.totalTokens;
+                  final merged = (usage ?? const TokenUsage()).add(
+                    finishedRound,
+                  );
+                  usage = merged;
+                  totalTokens = merged.totalTokens;
                 }
 
                 if (finishReason2 == 'tool_calls' || toolAcc2.isNotEmpty) {
