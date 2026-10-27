@@ -485,7 +485,7 @@ class ToolHandlerService {
             .where((s) => selectedMpcIds.contains(s.id))
             .any((s) => s.tools.any((t) => t.enabled && t.name == name));
         if (!isMcpTool) {
-          // Device tools (GPS, sensor, shell, etc.)
+          // Device tools (GPS, shell, etc.)
           try {
             final deviceResult = await DeviceToolsService.execute(name, args);
             if (deviceResult.isNotEmpty) {

@@ -14,7 +14,6 @@ class ToolsPlugin(private val ctx: Context) {
             "get_system_info" to SystemInfoTool(),
             "execute_system_command" to ShellTool(),
             "get_gps_location" to GPSTool(ctx),
-            "get_sensor_data" to SensorTool(ctx),
             "ssh_execute" to SSHTool(),
             "ssh_scp" to SCPTool(),
             "send_notification" to NotificationTool(),

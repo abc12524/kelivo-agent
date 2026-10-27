@@ -5,7 +5,7 @@ import "package:permission_handler/permission_handler.dart";
 import "notification_service.dart";
 import "tools/desktop_local_tools.dart";
 
-/// Service that provides device tools (GPS, sensor, shell, etc.)
+/// Service that provides device tools (GPS, shell, etc.)
 /// Communicates with native Android code via MethodChannel
 class DeviceToolsService {
   static const _toolsChannel = MethodChannel("app.tools");
@@ -29,12 +29,6 @@ class DeviceToolsService {
         "get_gps_location",
         "Get current GPS location (lat/lng/accuracy). Requires location permission. Returns lat, lng, accuracy in meters.",
         {},
-      ),
-      _def(
-        "get_sensor_data",
-        "Read Android device sensor data. sensor=all lists all available sensors. Specify sensor for one sensor: gyroscope, accelerometer, magnetic, light, pressure, proximity, gravity, linear_acceleration, rotation.",
-        {"sensor": {"type": "string", "enum": ["all","gyroscope","accelerometer","magnetic","light","pressure","proximity","gravity","linear_acceleration","rotation"], "description": "Sensor type or all"}},
-        ["sensor"],
       ),
       _def(
         "send_notification",

@@ -27,13 +27,6 @@ class PhoneTool extends ToolFamily {
       'sound: 参数 mode = tone|audio_url 必填；tone 可选 frequency, duration_ms, volume, '
           'stream_type；audio_url 需 url',
     ),
-    SubTool(
-      'sensor',
-      '读取传感器数据；可选 sensor = gyroscope/accelerometer/magnetic/light/'
-          'pressure/proximity/gravity/linear_acceleration/rotation；默认 all',
-      'sensor: 可选参数 sensor（默认 all）；可选值见清单',
-      requiresParams: false,
-    ),
   ];
 
   @override
@@ -55,10 +48,6 @@ class PhoneTool extends ToolFamily {
           return DeviceToolsService.execute('send_notification', p);
         case 'sound':
           return DeviceToolsService.execute('play_sound', p);
-        case 'sensor':
-          return DeviceToolsService.execute('get_sensor_data', {
-            'sensor': p['sensor'] ?? 'all',
-          });
         default:
           return unknownSubTool(name, action, subs);
       }
