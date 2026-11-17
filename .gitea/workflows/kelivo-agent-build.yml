@@ -34,8 +34,8 @@ permissions:
 
 env:
   GITEA_URL: http://192.168.30.181:3000
-  VERSION: 1.1.${{ github.run_number }}
-  # Flutter / pub 国内镜像
+  # 版本号在「版本号与 Release 标签」步骤里用 GITHUB_RUN_NUMBER 现算：
+  # Gitea 的 act 对 `1.1.${{ github.run_number }}` 这种拼接会求值成 %!t(string=1.1.N)
   PUB_HOSTED_URL: https://pub.flutter-io.cn
   FLUTTER_STORAGE_BASE_URL: https://storage.flutter-io.cn
   FLUTTER_VERSION: '3.44.9'
@@ -44,6 +44,9 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     container:
       image: flutter-build:local
       volumes:
@@ -155,6 +158,7 @@ jobs:
       - name: 📝 版本号与 Release 标签
         run: |
           set -euo pipefail
+          VERSION="1.1.${GITHUB_RUN_NUMBER}"
           sed -i "s/^version: .*/version: ${VERSION}/" pubspec.yaml
           TAG="${{ github.event.inputs.release_tag }}"
           if [ -z "${TAG}" ]; then TAG="v${VERSION}"; fi
@@ -166,6 +170,7 @@ jobs:
               ;;
           esac
           {
+            echo "VERSION=${VERSION}"
             echo "TAG=${TAG}"
             echo "PRERELEASE=${{ github.event.inputs.prerelease }}"
           } >> "$GITHUB_ENV"
