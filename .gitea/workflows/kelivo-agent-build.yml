@@ -179,12 +179,18 @@ jobs:
       - name: 🏗️ 构建 Release APK (arm64-v8a)
         run: |
           set -euo pipefail
+          # 显式导出：镜像自带的是 Flutter 3.44.0，GITHUB_ENV 的 PATH 在这些步骤里不生效
+          export FLUTTER_DIR="/opt/hostedtoolcache/flutter/stable-${FLUTTER_VERSION}-x64"
+          export JAVA_HOME="$(ls -d /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17*/x64 | tail -1)"
+          export PATH="${FLUTTER_DIR}/bin:${JAVA_HOME}/bin:${PATH}"
+          flutter --version
           flutter pub get
           flutter build apk --release --target-platform android-arm64 --split-debug-info=build/symbols --obfuscate
 
       - name: 📦 重命名 APK
         run: |
           set -euo pipefail
+          VERSION="1.1.${GITHUB_RUN_NUMBER}"
           cd build/app/outputs/flutter-apk
           ls -l *.apk
           mv app-release.apk "Kelivo_android_${VERSION}_arm64-v8a.apk"
@@ -197,6 +203,10 @@ jobs:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          VERSION="1.1.${GITHUB_RUN_NUMBER}"
+          TAG="${{ github.event.inputs.release_tag }}"
+          if [ -z "${TAG}" ]; then TAG="v${VERSION}"; fi
+          PRERELEASE="${{ github.event.inputs.prerelease }}"
           API="${GITEA_URL}/api/v1/repos/${{ github.repository }}/releases"
           APK="build/app/outputs/flutter-apk/Kelivo_android_${VERSION}_arm64-v8a.apk"
           SYMBOLS="Kelivo_symbols_${VERSION}.tar.gz"
