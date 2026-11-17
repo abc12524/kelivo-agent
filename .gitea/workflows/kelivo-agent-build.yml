@@ -38,7 +38,8 @@ env:
   # Gitea 的 act 对 `1.1.${{ github.run_number }}` 这种拼接会求值成 %!t(string=1.1.N)
   PUB_HOSTED_URL: https://pub.flutter-io.cn
   FLUTTER_STORAGE_BASE_URL: https://storage.flutter-io.cn
-  FLUTTER_VERSION: '3.44.9'
+  # pubspec 要求 Dart ^3.12.1，Flutter 3.44.9 自带 Dart 只有 3.12.0，故用 3.50.0（Dart 3.14.0）
+  FLUTTER_VERSION: '3.50.0'
   ANDROID_SDK_ROOT: /opt/android-sdk-linux
 
 jobs:
@@ -65,20 +66,19 @@ jobs:
       - name: 🧰 工具链（缓存优先，不拉官方 action）
         run: |
           set -euo pipefail
-          # Flutter：优先用 runner toolcache 里已经装好的版本
-          FLUTTER_DIR=$(ls -d /opt/hostedtoolcache/flutter/stable-*-x64 2>/dev/null | tail -1 || true)
-          if [ -n "${FLUTTER_DIR}" ]; then
-            echo "PATH=${FLUTTER_DIR}/bin:${PATH}" >> "$GITHUB_ENV"
-            echo "使用缓存 Flutter: ${FLUTTER_DIR}"
-          elif command -v flutter > /dev/null 2>&1; then
-            echo "使用镜像自带 Flutter: $(command -v flutter)"
-          else
-            echo "缓存里没有 Flutter，从国内镜像下载 ${FLUTTER_VERSION}"
+          # Flutter：优先用 toolcache 里已装好的指定版本，缺失时从国内镜像下载（toolcache 是持久卷，只下一次）
+          FLUTTER_DIR="/opt/hostedtoolcache/flutter/stable-${FLUTTER_VERSION}-x64"
+          if [ ! -x "${FLUTTER_DIR}/bin/flutter" ]; then
+            echo "toolcache 里没有 Flutter ${FLUTTER_VERSION}，从 storage.flutter-io.cn 下载"
+            mkdir -p /opt/hostedtoolcache/flutter
             curl -fL --retry 3 -o /tmp/flutter.tar.xz \
               "https://storage.flutter-io.cn/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
-            mkdir -p /opt && tar xf /tmp/flutter.tar.xz -C /opt
-            echo "PATH=/opt/flutter/bin:${PATH}" >> "$GITHUB_ENV"
+            tar xf /tmp/flutter.tar.xz -C /opt/hostedtoolcache/flutter
+            mv /opt/hostedtoolcache/flutter/flutter "${FLUTTER_DIR}"
+            rm -f /tmp/flutter.tar.xz
           fi
+          echo "PATH=${FLUTTER_DIR}/bin:${PATH}" >> "$GITHUB_ENV"
+          echo "使用 Flutter: ${FLUTTER_DIR}"
           # JDK 17：同样优先用 toolcache
           JAVA_DIR=$(ls -d /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17*/x64 2>/dev/null | tail -1 || true)
           if [ -n "${JAVA_DIR}" ]; then
