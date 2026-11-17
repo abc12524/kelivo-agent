@@ -38,8 +38,9 @@ env:
   # Gitea 的 act 对 `1.1.${{ github.run_number }}` 这种拼接会求值成 %!t(string=1.1.N)
   PUB_HOSTED_URL: https://pub.flutter-io.cn
   FLUTTER_STORAGE_BASE_URL: https://storage.flutter-io.cn
-  # pubspec 要求 Dart ^3.12.1，Flutter 3.44.9 自带 Dart 只有 3.12.0，故用 3.50.0（Dart 3.14.0）
-  FLUTTER_VERSION: '3.50.0'
+  # 与 pubspec 对齐：flutter >=3.44.1 / sdk ^3.12.1。
+  # 3.44.9 自带 Dart 3.12.2，且仍支持项目现有 Gradle 8.14（3.47+ 要求 Gradle 9.3+，会连带升 AGP）
+  FLUTTER_VERSION: '3.44.9'
   ANDROID_SDK_ROOT: /opt/android-sdk-linux
 
 jobs:
