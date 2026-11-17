@@ -1,0 +1,235 @@
+name: Kelivo Build (Gitea)
+
+# 【Gitea 专用】与 .github/workflows/kelivo-agent-build.yml 分开维护：
+#   - GitHub 侧：官方源 + 官方 action（actions/*、subosito/flutter-action），
+#                版本 1.1.<GitHub run_number>，发布 GitHub Release —— 客户端更新通道
+#   - Gitea 侧（本文件）：内网 runner（容器 flutter-build:local + /mnt/cache 缓存卷），
+#                国内镜像源（pub.flutter-io.cn / storage.flutter-io.cn / 阿里云 Maven），
+#                不依赖任何 GitHub 上的 action（runner 拉 github.com 会断流），
+#                版本 1.1.<Gitea run_number>，发布 Gitea Release
+# 注意：Gitea 对同名工作流优先取 .gitea/workflows，所以推上来后 Gitea 只跑本文件；
+#       两边 run_number 各自独立累加，Gitea 的号偏小，仅用于内网自测/分发。
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: '发布到 Gitea Release（填 false 只编译不发版）'
+        required: false
+        default: true
+        type: boolean
+      release_tag:
+        description: 'Release 标签（留空自动 v1.1.<run_number>，须匹配 v1.1.x）'
+        required: false
+        default: ''
+        type: string
+      prerelease:
+        description: '预发布版本（填 true 标 prerelease）'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+env:
+  GITEA_URL: http://192.168.30.181:3000
+  VERSION: 1.1.${{ github.run_number }}
+  # Flutter / pub 国内镜像
+  PUB_HOSTED_URL: https://pub.flutter-io.cn
+  FLUTTER_STORAGE_BASE_URL: https://storage.flutter-io.cn
+  FLUTTER_VERSION: '3.44.9'
+  ANDROID_SDK_ROOT: /opt/android-sdk-linux
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: flutter-build:local
+      volumes:
+        - /mnt/cache/gradle:/root/.gradle
+        - /mnt/cache/pub:/root/.pub-cache
+
+    steps:
+      # runner 拉 https://github.com/actions/checkout 会超时/断流，直接内网克隆
+      - name: 📥 Checkout（内网直连）
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory '*'
+          git clone --depth 1 "${GITEA_URL}/${GITHUB_REPOSITORY}.git" .
+          git log -1 --oneline
+
+      - name: 🧰 工具链（缓存优先，不拉官方 action）
+        run: |
+          set -euo pipefail
+          # Flutter：优先用 runner toolcache 里已经装好的版本
+          FLUTTER_DIR=$(ls -d /opt/hostedtoolcache/flutter/stable-*-x64 2>/dev/null | tail -1 || true)
+          if [ -n "${FLUTTER_DIR}" ]; then
+            echo "PATH=${FLUTTER_DIR}/bin:${PATH}" >> "$GITHUB_ENV"
+            echo "使用缓存 Flutter: ${FLUTTER_DIR}"
+          elif command -v flutter > /dev/null 2>&1; then
+            echo "使用镜像自带 Flutter: $(command -v flutter)"
+          else
+            echo "缓存里没有 Flutter，从国内镜像下载 ${FLUTTER_VERSION}"
+            curl -fL --retry 3 -o /tmp/flutter.tar.xz \
+              "https://storage.flutter-io.cn/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
+            mkdir -p /opt && tar xf /tmp/flutter.tar.xz -C /opt
+            echo "PATH=/opt/flutter/bin:${PATH}" >> "$GITHUB_ENV"
+          fi
+          # JDK 17：同样优先用 toolcache
+          JAVA_DIR=$(ls -d /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17*/x64 2>/dev/null | tail -1 || true)
+          if [ -n "${JAVA_DIR}" ]; then
+            echo "JAVA_HOME=${JAVA_DIR}" >> "$GITHUB_ENV"
+            echo "PATH=${JAVA_DIR}/bin:${PATH}" >> "$GITHUB_ENV"
+            echo "使用缓存 JDK: ${JAVA_DIR}"
+          fi
+          [ -d "${ANDROID_SDK_ROOT}" ] || { echo "❌ 镜像里没有 Android SDK: ${ANDROID_SDK_ROOT}"; exit 1; }
+          flutter --version
+          java -version
+
+      - name: 🇨🇳 Gradle 仓库镜像（dl.google.com / repo.maven → 阿里云）
+        run: |
+          set -euo pipefail
+          mkdir -p /root/.gradle/init.d
+          cat > /root/.gradle/init.d/gitea-mirrors.gradle <<'EOF'
+          // Gitea 专用：把官方仓库地址就地改写到阿里云镜像，保留仓库顺序与 jitpack。
+          // 这样 Flutter 内部 includeBuild 的 gradle 工程也一并生效，不用改动仓库里的 gradle 文件。
+          def mirrors = [
+              'dl.google.com': 'https://maven.aliyun.com/repository/google',
+              'maven.google.com': 'https://maven.aliyun.com/repository/google',
+              'repo.maven.apache.org': 'https://maven.aliyun.com/repository/public',
+              'repo1.maven.org': 'https://maven.aliyun.com/repository/public',
+              'plugins.gradle.org/m2': 'https://maven.aliyun.com/repository/gradle-plugin',
+          ]
+
+          def rewrite = { repos ->
+              repos.withType(MavenArtifactRepository).configureEach { repo ->
+                  def url = repo.url.toString()
+                  def hit = mirrors.find { k, v -> url.contains(k) }
+                  if (hit) {
+                      println "[gitea-mirror] ${url} -> ${hit.value}"
+                      repo.url = hit.value
+                  }
+              }
+          }
+
+          settingsEvaluated { settings ->
+              rewrite(settings.pluginManagement.repositories)
+          }
+
+          gradle.projectsEvaluated {
+              gradle.rootProject.allprojects { p ->
+                  rewrite(p.repositories)
+                  rewrite(p.buildscript.repositories)
+              }
+          }
+          EOF
+
+      - name: 📝 Inject fallback
+        run: |
+          set -euo pipefail
+          mkdir -p lib/secrets
+          cat > lib/secrets/fallback.dart <<'EOF'
+          const String siliconflowFallbackKey = '${{ secrets.SILICONFLOW_KEY }}';
+          EOF
+
+      - name: 🔑 写入签名密钥
+        run: |
+          set -euo pipefail
+          if [ -z "${SIGN_KEYSTORE_BASE64}" ]; then
+            echo "未配置 SIGN_KEYSTORE_BASE64，跳过（用 debug 签名）"
+            exit 0
+          fi
+          echo "$SIGN_KEYSTORE_BASE64" | base64 --decode > android/app/key.jks
+          echo "storeFile=key.jks" >> android/key.properties
+          echo "storePassword=$KEYSTORE_PASSWORD" >> android/key.properties
+          echo "keyAlias=$KEY_ALIAS" >> android/key.properties
+          echo "keyPassword=$KEY_PASSWORD" >> android/key.properties
+          echo "✅ 签名配置已写入"
+        env:
+          SIGN_KEYSTORE_BASE64: ${{ secrets.SIGN_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: 📝 版本号与 Release 标签
+        run: |
+          set -euo pipefail
+          sed -i "s/^version: .*/version: ${VERSION}/" pubspec.yaml
+          TAG="${{ github.event.inputs.release_tag }}"
+          if [ -z "${TAG}" ]; then TAG="v${VERSION}"; fi
+          case "$TAG" in
+            v1.1.*) ;;
+            *)
+              echo "❌ Android 通道的 Release 标签必须形如 v1.1.x，实际: ${TAG}"
+              exit 1
+              ;;
+          esac
+          {
+            echo "TAG=${TAG}"
+            echo "PRERELEASE=${{ github.event.inputs.prerelease }}"
+          } >> "$GITHUB_ENV"
+          echo "版本号: ${VERSION}（Gitea 运行号 ${GITHUB_RUN_NUMBER}），标签: ${TAG}"
+
+      - name: 🏗️ 构建 Release APK (arm64-v8a)
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build apk --release --target-platform android-arm64 --split-debug-info=build/symbols --obfuscate
+
+      - name: 📦 重命名 APK
+        run: |
+          set -euo pipefail
+          cd build/app/outputs/flutter-apk
+          ls -l *.apk
+          mv app-release.apk "Kelivo_android_${VERSION}_arm64-v8a.apk"
+          cd - > /dev/null
+          tar czf "Kelivo_symbols_${VERSION}.tar.gz" build/symbols
+
+      - name: 🚀 发布到 Gitea Release
+        if: ${{ github.event.inputs.publish_release != 'false' }}
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          API="${GITEA_URL}/api/v1/repos/${{ github.repository }}/releases"
+          APK="build/app/outputs/flutter-apk/Kelivo_android_${VERSION}_arm64-v8a.apk"
+          SYMBOLS="Kelivo_symbols_${VERSION}.tar.gz"
+          AUTH="Authorization: token ${TOKEN}"
+          test -f "$APK" || { echo "缺少 APK: $APK"; exit 1; }
+
+          # 幂等：同 tag 的旧 release（含 tag）先删掉
+          OLD_ID=$( { curl -fsS -H "$AUTH" "$API/tags/${TAG}" || true; } | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2 || true )
+          if [ -n "${OLD_ID:-}" ]; then
+            curl -fsS -X DELETE -H "$AUTH" "$API/${OLD_ID}" > /dev/null
+            echo "已删除同 tag 旧 release: ${TAG} (id=${OLD_ID})"
+          fi
+
+          # 发布说明：提交标题 + 正文（转成 JSON 字符串，不依赖 python/jq）
+          NOTES=$(git log -1 --pretty=format:'%s%n%n%b' | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')
+          NOTES=$(printf '%s' "$NOTES" | awk 'BEGIN{ORS=""} {sub(/\r$/,""); printf "%s\\n", $0}')
+          if [ "${PRERELEASE}" = "true" ]; then PRE="true"; else PRE="false"; fi
+          printf '{"tag_name":"%s","target_commitish":"%s","name":"Kelivo %s","body":"%s\\n\\n---\\n- 版本: %s\\n- 构建号: %s\\n- 提交: %s\\n- 平台: Android arm64-v8a\\n","draft":false,"prerelease":%s}' \
+            "$TAG" "$GITHUB_SHA" "$TAG" "$NOTES" "$VERSION" "$GITHUB_RUN_NUMBER" "$GITHUB_SHA" "$PRE" > release.json
+
+          REL=$(curl -fsS -X POST -H "$AUTH" -H "Content-Type: application/json" --data-binary @release.json "$API")
+          REL_ID=$(printf '%s' "$REL" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2 || true)
+          [ -n "${REL_ID:-}" ] || { echo "创建 release 失败: ${REL}"; exit 1; }
+          echo "已创建 release: ${TAG} (id=${REL_ID})"
+
+          for f in "$APK" "$SYMBOLS"; do
+            [ -f "$f" ] || continue
+            curl -fsS -X POST -H "$AUTH" -H "Content-Type: application/octet-stream" \
+              --data-binary "@$f" "$API/${REL_ID}/assets?name=$(basename "$f")" > /dev/null
+            echo "已上传 $(basename "$f")"
+          done
+
+          # 回读校验：APK 必须挂在 release 上
+          ASSETS=$(curl -fsS -H "$AUTH" "$API/${REL_ID}")
+          if ! printf '%s' "$ASSETS" | grep -q "$(basename "$APK")"; then
+            echo "❌ 资产上传校验失败，release=${REL_ID}"
+            printf '%s\n' "$ASSETS"
+            exit 1
+          fi
+          echo "✅ 已发布 ${TAG}，APK 已上传"
+          echo "   ${GITEA_URL}/${{ github.repository }}/releases/tag/${TAG}"
